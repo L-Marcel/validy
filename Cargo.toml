@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+validation_derive = { path = "validation_derive", version = "0.1.0", optional = true }
+serde = { version = "1.0.228", features = ["derive"] }
+async-trait = "0.1.89"
+
+[features]
+default = ["derive"]
+derive = ["dep:validation_derive"]
