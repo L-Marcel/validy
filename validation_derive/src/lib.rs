@@ -1,301 +1,78 @@
-use core::panic;
-use proc_macro::TokenStream;
-use proc_macro_crate::{FoundCrate, crate_name};
-use proc_macro2::Span;
-use quote::{format_ident, quote};
-use syn::{Data, Ident, LitStr, Path, Type, meta::ParseNestedMeta};
+mod extractors;
+mod factories;
+mod imports;
+mod primitives;
+mod types;
 
-fn import_validation() -> proc_macro2::TokenStream {
-	let found_crate = crate_name("validation").expect("validation is present in `Cargo.toml`");
+use crate::{
+	extractors::{
+		attributes::{ValidationAttributes, get_attributes},
+		ident::{get_fields, get_operations},
+	},
+	factories::core::get_factory,
+	imports::{import_async_trait, import_validation},
+	types::{Input, Output},
+};
 
-	match found_crate {
-		FoundCrate::Itself => quote!(crate::core::*),
-		FoundCrate::Name(name) => {
-			let ident = Ident::new(&name, Span::call_site());
-			quote!(#ident::core::*)
-		}
-	}
-}
+use proc_macro_error::proc_macro_error;
+use syn::DeriveInput;
 
-fn import_async_trait() -> proc_macro2::TokenStream {
-	let found_crate = crate_name("async-trait").expect("async-trait is present in `Cargo.toml`");
-
-	match found_crate {
-		FoundCrate::Itself => quote!(crate::async_trait),
-		FoundCrate::Name(name) => {
-			let ident = Ident::new(&name, Span::call_site());
-			quote!(#ident::async_trait)
-		}
-	}
-}
-
-#[proc_macro_derive(Validate)]
-pub fn validation_macro(input: TokenStream) -> TokenStream {
+/// **Struct options:** `#[validate(asyncronous = <bool>, context = <type>, deserialize = <bool>, modify = <bool>)]`
+/// * Configures global validation behavior, context injection, and serialization hooks.
+///
+/// **Validation attributes:** `#[validate(<rule>, ...)]`
+/// * `nested`: Validates the fields of a nested struct.
+/// * `for_each(<rule>, ...)`: Applies validation rules to every element in a collection.
+/// * `required(<message>, <code>)`: Enforces that the value is present.
+/// * `email(<message>, <code>)`: Validates that the string follows a standard email format.
+/// * `range(<range>, <message>, <code>)`: Validates that the number falls within the specified numeric range.
+/// * `length(<range>, <message>, <code>)`: Validates that the length (string or collection) is within limits.
+/// * `suffix(<string>, <message>, <code>)`: Validates that the string ends with the specified suffix.
+/// * `prefix(<string>, <message>, <code>)`: Validates that the string starts with the specified prefix.
+/// * `pattern(<regex>, <message>, <code>)`: Validates that the string matches the provided Regex pattern.
+/// * `url(<message>, <code>)`: Validates that the string is a standard URL.
+/// * `ip(<message>, <code>)`: Validates that the string is a valid IP address (v4 or v6).
+/// * `ipv4(<message>, <code>)`: Validates that the string is a valid IPv4 address.
+/// * `ipv6(<message>, <code>)`: Validates that the string is a valid IPv6 address.
+/// * `contains(<needle>, <message>, <code>)`: Validates that the collection or string contains the specified element/substring.
+/// * `any(<list>, <message>, <code>)`: Validates that the value is present in the allowed list (allowlist).
+/// * `none(<list>, <message>, <code>)`: Validates that the value is NOT present in the forbidden list (blocklist).
+/// * `time(<format>, <message>, <code>)`: Validates that the string matches the specified time/date format.
+/// * `after(<time>, <message>, <code>)`: Validates that the date/time is strictly after the specified value.
+/// * `before(<time>, <message>, <code>)`: Validates that the date/time is strictly before the specified value.
+/// * `inline(<function>, <message>, <code>)`: Validates using a simple inline closure returning a boolean.
+/// * `custom(<function>)`: Validates using a custom function.
+/// * `custom_with_context(<function>)`: Validates using a custom function with access to the context.
+/// * `async_custom(<function>)`: Validates using a custom async function.
+/// * `async_custom_with_context(<function>)`: Validates using a custom async function with access to the context.
+///
+/// **Modification attributes:** `#[modify(<modifier>, ...)]`
+/// * `trim`: Removes whitespace from both ends of the string.
+/// * `trim_start`: Removes whitespace from the start of the string.
+/// * `trim_end`: Removes whitespace from the end of the string.
+/// * `uppercase`: Converts all characters in the string to uppercase.
+/// * `lowercase`: Converts all characters in the string to lowercase.
+/// * `capitalize`: Capitalizes the first character of the string.
+/// * `parse_from(<type>)`: Parses the value from a another type.
+/// * `custom_parse(<function>)`: Parses the value using a custom transformation function.
+/// * `custom_parse_with_context(<function>)`: Parses the value using a custom function with context access.
+/// * `async_custom_parse(<function>)`: Parses the value using a custom async function.
+/// * `async_custom_parse_with_context(<function>)`: Parses the value using a custom async function with context access.
+/// * `custom(<function>)`: Modifies the value in-place using a custom function.
+/// * `custom_with_context(<function>)`: Modifies the value in-place using a custom function with context access.
+/// * `async_custom(<function>)`: Modifies the value in-place using a custom async function.
+/// * `async_custom_with_context(<function>)`: Modifies the value in-place using a custom async function with context access.
+#[proc_macro_error]
+#[proc_macro_derive(Validate, attributes(validate))]
+pub fn validation_macro(input: Input) -> Output {
 	let ast = syn::parse(input).unwrap();
-	impl_validation_macro(&ast, false)
+	impl_validation_macro(&ast)
 }
 
-#[proc_macro_derive(AsyncValidate)]
-pub fn async_validation_macro(input: TokenStream) -> TokenStream {
-	let ast = syn::parse(input).unwrap();
-	impl_validation_macro(&ast, true)
-}
-
-fn impl_validation_macro(ast: &syn::DeriveInput, asynchronous: bool) -> TokenStream {
-	let name = &ast.ident;
-
-	let fields = if let Data::Struct(data) = &ast.data {
-		&data.fields
-	} else {
-		panic!("validation only supports structs!");
-	};
-
-	let field_validations: Vec<(Vec<ValidationQuote>, bool)> = fields
-		.iter()
-		.map(|field| {
-			let field_name = &field.ident;
-			let field_type = &field.ty;
-
-			let mut with_context = false;
-			let mut validations = Vec::<ValidationQuote>::new();
-			for attr in &field.attrs {
-				if attr.path().is_ident("validate") {
-					let _ = attr.parse_nested_meta(|meta| {
-						let (validation, has_context) =
-							apply_validation_attr_macro(field_name, field_type, meta, asynchronous);
-
-						with_context |= has_context;
-						validations.push(validation);
-						Ok(())
-					});
-				}
-			}
-
-			(validations, with_context)
-		})
-		.collect();
-
-	let need_context = field_validations
-		.iter()
-		.map(|(_, with_context)| *with_context)
-		.reduce(|a, b| a || b)
-		.unwrap_or(false);
-
-	let field_checks = field_validations.iter().map(|(field_validations, _)| {
-		let validations: Vec<proc_macro2::TokenStream> = field_validations
-			.iter()
-			.map(|validation| match validation {
-				ValidationQuote::Simple(simple) => simple.clone(),
-				ValidationQuote::Conditional(simple, complex) => {
-					if need_context {
-						complex.clone()
-					} else {
-						simple.clone()
-					}
-				}
-			})
-			.collect();
-
-		quote! { #(#validations)* }
-	});
-
-	let (strait, with_context_strait, func_name, with_context_func_name, _) = get_idents(asynchronous);
-
-	let async_kw = if asynchronous { quote!(async) } else { quote!() };
-	let async_import = if asynchronous { import_async_trait() } else { quote!() };
-	let async_attr = if asynchronous {
-		quote!(#[::async_trait::async_trait])
-	} else {
-		quote!()
-	};
-
-	let import = import_validation();
-	if need_context {
-		quote! {
-		  use #import;
-		  use #async_import;
-
-		  #async_attr
-		  impl<C> #with_context_strait<C> for #name {
-			  #async_kw fn #with_context_func_name(&self, context: &C) -> Result<(), ValidationErrors> {
-				  let mut errors = Vec::<ValidationError>::new();
-				  #(#field_checks)*
-
-				  if errors.is_empty() {
-					  Ok(())
-				  } else {
-					  let map = errors.into_iter()
-						  .map(|e| (e.field.clone(), e))
-						  .collect();
-
-					  Err(map)
-				  }
-			  }
-		  }
-		}
-		.into()
-	} else {
-		quote! {
-		  use #import;
-		  use #async_import;
-
-			#async_attr
-		  impl #strait for #name {
-			  #async_kw fn #func_name(&self) -> Result<(), ValidationErrors> {
-					let mut errors = Vec::<ValidationError>::new();
-				  #(#field_checks)*
-
-				  if errors.is_empty() {
-					  Ok(())
-				  } else {
-					  let map = errors.into_iter()
-						  .map(|e| (e.field.clone(), e))
-						  .collect();
-
-					  Err(map)
-				  }
-			  }
-		  }
-		}
-		.into()
-	}
-}
-
-enum ValidationQuote {
-	Simple(proc_macro2::TokenStream),
-	Conditional(proc_macro2::TokenStream, proc_macro2::TokenStream),
-}
-
-fn get_idents(asynchronous: bool) -> (Ident, Ident, Ident, Ident, proc_macro2::TokenStream) {
-	let strait = format_ident!("{}", if asynchronous { "AsyncValidation" } else { "Validation" });
-	let with_context_strait = format_ident!(
-		"{}",
-		if asynchronous {
-			"AsyncValidationWithContext"
-		} else {
-			"ValidationWithContext"
-		}
-	);
-
-	let func_name = format_ident!("{}", if asynchronous { "async_validate" } else { "validate" });
-	let with_context_func_name = format_ident!(
-		"{}",
-		if asynchronous {
-			"async_validate_with_context"
-		} else {
-			"validate_with_context"
-		}
-	);
-
-	let suffix = if asynchronous { quote!(.await) } else { quote!() };
-
-	(strait, with_context_strait, func_name, with_context_func_name, suffix)
-}
-
-fn apply_validation_attr_macro(
-	field_name: &Option<Ident>,
-	field_type: &Type,
-	meta: ParseNestedMeta<'_>,
-	asynchronous: bool,
-) -> (ValidationQuote, bool) {
-	let (strait, with_context_strait, func_name, with_context_func_name, suffix) = get_idents(asynchronous);
-
-	match meta {
-		m if m.path.is_ident("nested") => (
-			ValidationQuote::Conditional(
-				quote! {
-				  if let Err(e) = <#field_type as #strait>::#func_name(&self.#field_name)#suffix {
-						todo!()
-				  }
-				},
-				quote! {
-				  if let Err(e) = <#field_type as #with_context_strait<C>>::#with_context_func_name(&self.#field_name, &context)#suffix {
-						todo!()
-					}
-				},
-			),
-			false,
-		),
-		m if m.path.is_ident("custom") => {
-			let val: LitStr = m
-				.value()
-				.unwrap_or_else(|_| panic!("'custom' need a value"))
-				.parse()
-				.unwrap_or_else(|_| panic!("'custom' value should be a function name"));
-
-			let custom_func_name: Path = val
-				.parse()
-				.unwrap_or_else(|_| panic!("'custom' value should be a function name"));
-
-			(
-				ValidationQuote::Simple(quote! {
-					if let Err(e) = #custom_func_name(&self.#field_name) {
-					  errors.push(e);
-					}
-				}),
-				false,
-			)
-		}
-		m if m.path.is_ident("async_custom") => {
-			let val: LitStr = m
-				.value()
-				.unwrap_or_else(|_| panic!("'async_custom' need a value"))
-				.parse()
-				.unwrap_or_else(|_| panic!("'async_custom' value should be a function name"));
-
-			let custom_func_name: Path = val
-				.parse()
-				.unwrap_or_else(|_| panic!("'async_custom' value should be a function name"));
-
-			(
-				ValidationQuote::Simple(quote! {
-					if let Err(e) = #custom_func_name(&self.#field_name).await {
-					  errors.push(e);
-					}
-				}),
-				false,
-			)
-		}
-		m if m.path.is_ident("custom_with_context") => {
-			let val: LitStr = m
-				.value()
-				.unwrap_or_else(|_| panic!("'custom_with_context' need a value"))
-				.parse()
-				.unwrap_or_else(|_| panic!("'custom_with_context' value should be a function name"));
-
-			let custom_func_name: Path = val
-				.parse()
-				.unwrap_or_else(|_| panic!("'custom_with_context' value should be a function name"));
-
-			(
-				ValidationQuote::Simple(quote! {
-					if let Err(e) = #custom_func_name(&self.#field_name, &context) {
-					  errors.push(e);
-					}
-				}),
-				true,
-			)
-		}
-		m if m.path.is_ident("async_custom_with_context") => {
-			let val: LitStr = m
-				.value()
-				.unwrap_or_else(|_| panic!("'async_custom_with_context' need a value"))
-				.parse()
-				.unwrap_or_else(|_| panic!("'async_custom_with_context' value should be a function name"));
-
-			let custom_func_name: Path = val
-				.parse()
-				.unwrap_or_else(|_| panic!("'async_custom_with_context' value should be a function name"));
-
-			(
-				ValidationQuote::Simple(quote! {
-					if let Err(e) = #custom_func_name(&self.#field_name, &context).await {
-					  errors.push(e);
-					}
-				}),
-				true,
-			)
-		}
-		_ => (ValidationQuote::Simple(quote! {}), false),
-	}
+fn impl_validation_macro(ast: &DeriveInput) -> Output {
+	let fields = get_fields(ast);
+	let attributes = get_attributes(ast);
+	let factory = get_factory(&ast.ident, &attributes);
+	let operations = get_operations(fields, factory.as_ref(), &attributes);
+	factory.create(operations)
 }

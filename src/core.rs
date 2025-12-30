@@ -1,22 +1,85 @@
 use async_trait::async_trait;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{borrow::Cow, collections::HashMap};
 #[cfg(feature = "derive")]
 pub use validation_derive::*;
 
-pub type ValidationErrors = HashMap<String, ValidationError>;
+use crate::builders::ValidationErrorBuilder;
+
+pub type ValidationErrors = HashMap<Cow<'static, str>, ValidationError>;
 
 #[derive(Debug, Serialize)]
-pub struct ValidationError {
-	#[serde(skip_serializing)]
-	pub field: String,
-	pub code: String,
-	pub message: String,
+#[serde(untagged)]
+pub enum ValidationError {
+	Node(NestedValidationError),
+	Leaf(SimpleValidationError),
 }
 
 impl ValidationError {
-	pub fn new(field: String, code: String, message: String) -> Self {
-		ValidationError { field, code, message }
+	pub fn builder() -> ValidationErrorBuilder {
+		ValidationErrorBuilder {}
+	}
+}
+
+#[derive(Debug, Serialize)]
+pub struct NestedValidationError {
+	#[serde(skip_serializing)]
+	pub field: Cow<'static, str>,
+	pub code: Cow<'static, str>,
+	pub errors: ValidationErrors,
+}
+
+impl NestedValidationError {
+	pub fn from(errors: ValidationErrors, field: impl Into<Cow<'static, str>>) -> Self {
+		NestedValidationError {
+			field: field.into(),
+			code: "nested".into(),
+			errors,
+		}
+	}
+
+	pub fn new(field: impl Into<Cow<'static, str>>) -> Self {
+		let errors = HashMap::<Cow<'static, str>, ValidationError>::new();
+
+		NestedValidationError {
+			field: field.into(),
+			code: "nested".into(),
+			errors,
+		}
+	}
+
+	pub fn put(&mut self, error: ValidationError) {
+		match error {
+			ValidationError::Node(error) => {
+				self.errors.insert(error.field.clone(), error.into());
+			}
+			ValidationError::Leaf(error) => {
+				self.errors.insert(error.field.clone(), error.into());
+			}
+		}
+	}
+}
+
+#[derive(Debug, Serialize)]
+pub struct SimpleValidationError {
+	#[serde(skip_serializing)]
+	pub field: Cow<'static, str>,
+	pub code: Cow<'static, str>,
+	pub message: Option<Cow<'static, str>>,
+}
+
+impl SimpleValidationError {
+	pub fn new(field: impl Into<Cow<'static, str>>, code: impl Into<Cow<'static, str>>) -> Self {
+		SimpleValidationError {
+			field: field.into(),
+			code: code.into(),
+			message: None,
+		}
+	}
+
+	pub fn with_message(mut self, message: impl Into<Cow<'static, str>>) -> Self {
+		self.message = Some(message.into());
+		self
 	}
 }
 
@@ -25,18 +88,8 @@ pub trait Validation {
 }
 
 #[async_trait]
-pub trait AsyncValidation {
+pub trait AsyncValidation: Send + Sync {
 	async fn async_validate(&self) -> Result<(), ValidationErrors>;
-}
-
-#[async_trait]
-impl<T> AsyncValidation for T
-where
-	T: Validation + Send + Sync,
-{
-	async fn async_validate(&self) -> Result<(), ValidationErrors> {
-		self.validate()
-	}
 }
 
 pub trait ValidationWithContext<C> {
@@ -44,17 +97,18 @@ pub trait ValidationWithContext<C> {
 }
 
 #[async_trait]
-pub trait AsyncValidationWithContext<C> {
+pub trait AsyncValidationWithContext<C>: Send + Sync {
 	async fn async_validate_with_context(&self, context: &C) -> Result<(), ValidationErrors>;
 }
 
-#[async_trait]
-impl<T, C> AsyncValidationWithContext<C> for T
-where
-	T: ValidationWithContext<C> + Send + Sync,
-	C: Send + Sync,
-{
-	async fn async_validate_with_context(&self, context: &C) -> Result<(), ValidationErrors> {
-		self.validate_with_context(context)
+impl From<NestedValidationError> for ValidationError {
+	fn from(value: NestedValidationError) -> Self {
+		ValidationError::Node(value)
+	}
+}
+
+impl From<SimpleValidationError> for ValidationError {
+	fn from(value: SimpleValidationError) -> Self {
+		ValidationError::Leaf(value)
 	}
 }
