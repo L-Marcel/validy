@@ -1,13 +1,9 @@
 use crate::{
-	Output,
-	extractors::ident::get_ident_from_nested_meta,
-	factories::{core::AbstractValidationFactory, default::ValidationFactory},
-	import_async_trait, import_validation,
+	Output, factories::core::AbstractValidationFactory, fields::FieldAttributes, import_async_trait, import_validation,
 };
-use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, Type, meta::ParseNestedMeta, spanned::Spanned};
+use syn::Ident;
 
 pub struct AsyncValidationFactory<'a> {
 	name: &'a Ident,
@@ -16,27 +12,6 @@ pub struct AsyncValidationFactory<'a> {
 impl<'a> AsyncValidationFactory<'a> {
 	pub fn new(name: &'a Ident) -> Self {
 		Self { name }
-	}
-
-	pub fn create_custom_from(
-		field_name: &Option<Ident>,
-		meta: &ParseNestedMeta<'_>,
-		function: Option<Ident>,
-	) -> TokenStream {
-		if function.is_none() {
-			let span = meta.path.span();
-			emit_error!(
-			  span, "async_custom need a function";
-				help = "#[validate(async_custom(my_function))] pub name: String";
-				note = "async fn my_function(name: &str) -> Result<(), ValidationError>"
-			);
-		}
-
-		quote! {
-			if let Err(e) = #function(&self.#field_name).await {
-			  errors.push(e);
-			}
-		}
 	}
 }
 
@@ -85,25 +60,16 @@ impl<'a> AbstractValidationFactory for AsyncValidationFactory<'a> {
 		.into()
 	}
 
-	fn meta_is_custom(&self, meta: &ParseNestedMeta<'_>) -> bool {
-		meta.path.is_ident("async_custom") || meta.path.is_ident("custom")
-	}
+	fn create_nested(&self, field: &FieldAttributes) -> TokenStream {
+		let reference = field.get_reference();
+		let field_name = field.get_name();
+		let field_type = field.get_type();
 
-	fn create_custom(&self, field_name: &Option<Ident>, meta: ParseNestedMeta<'_>) -> TokenStream {
-		let function = get_ident_from_nested_meta(&meta);
-
-		match meta {
-			m if meta.path.is_ident("custom") => ValidationFactory::create_custom_from(field_name, &m, function),
-			m => AsyncValidationFactory::create_custom_from(field_name, &m, function),
-		}
-	}
-
-	fn create_nested(&self, field_name: &Option<Ident>, field_type: &Type) -> TokenStream {
 		quote! {
-		  if let Err(e) = <#field_type as AsyncValidation>::validate(&self.#field_name).await {
+		  if let Err(e) = <#field_type as AsyncValidation>::validate(&#reference).await {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
-					stringify!(#field_name),
+					#field_name,
 				)));
 		  }
 		}

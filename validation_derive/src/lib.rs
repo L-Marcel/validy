@@ -1,14 +1,14 @@
-mod extractors;
+mod attributes;
+mod core;
 mod factories;
+mod fields;
 mod imports;
 mod primitives;
 mod types;
 
 use crate::{
-	extractors::{
-		attributes::{ValidationAttributes, get_attributes},
-		ident::{get_fields, get_operations},
-	},
+	attributes::get_attributes,
+	core::{get_fields, get_operations},
 	factories::core::get_factory,
 	imports::{import_async_trait, import_validation},
 	types::{Input, Output},
@@ -63,7 +63,7 @@ use syn::DeriveInput;
 /// * `async_custom(<function>)`: Modifies the value in-place using a custom async function.
 /// * `async_custom_with_context(<function>)`: Modifies the value in-place using a custom async function with context access.
 #[proc_macro_error]
-#[proc_macro_derive(Validate, attributes(validate))]
+#[proc_macro_derive(Validate, attributes(validate, modify, complex))]
 pub fn validation_macro(input: Input) -> Output {
 	let ast = syn::parse(input).unwrap();
 	impl_validation_macro(&ast)

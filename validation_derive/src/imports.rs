@@ -11,7 +11,20 @@ pub fn import_validation_functions(function: &str) -> TokenStream {
 		FoundCrate::Itself => quote!(crate::functions::#function),
 		FoundCrate::Name(name) => {
 			let ident = Ident::new(&name, Span::call_site());
-			quote!(#ident::functions::#function_path)
+			quote!(#ident::functions::validation::#function_path)
+		}
+	}
+}
+
+pub fn import_modification_functions(function: &str) -> TokenStream {
+	let found_crate = crate_name("validation").expect("modification is present in `Cargo.toml`");
+	let function_path: Path = parse_str(function).expect("can't parse modification crate path");
+
+	match found_crate {
+		FoundCrate::Itself => quote!(crate::functions::#function),
+		FoundCrate::Name(name) => {
+			let ident = Ident::new(&name, Span::call_site());
+			quote!(#ident::functions::modification::#function_path)
 		}
 	}
 }

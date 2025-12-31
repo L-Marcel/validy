@@ -1,11 +1,9 @@
 use crate::{
-	Output, extractors::ident::get_ident_from_nested_meta, factories::core::AbstractValidationFactory,
-	import_async_trait, import_validation,
+	Output, factories::core::AbstractValidationFactory, fields::FieldAttributes, import_async_trait, import_validation,
 };
-use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, Type, meta::ParseNestedMeta, spanned::Spanned};
+use syn::Ident;
 
 pub struct ValidationFactory<'a> {
 	name: &'a Ident,
@@ -14,27 +12,6 @@ pub struct ValidationFactory<'a> {
 impl<'a> ValidationFactory<'a> {
 	pub fn new(name: &'a Ident) -> Self {
 		Self { name }
-	}
-
-	pub fn create_custom_from(
-		field_name: &Option<Ident>,
-		meta: &ParseNestedMeta<'_>,
-		function: Option<Ident>,
-	) -> TokenStream {
-		if function.is_none() {
-			let span = meta.path.span();
-			emit_error!(
-			  span, "custom need a function";
-				help = "#[validate(custom(my_function))] pub name: String";
-				note = "fn my_function(name: &str) -> Result<(), ValidationError>"
-			);
-		}
-
-		quote! {
-			if let Err(e) = #function(&self.#field_name) {
-			  errors.push(e);
-			}
-		}
 	}
 }
 
@@ -95,21 +72,16 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 		.into()
 	}
 
-	fn meta_is_custom(&self, meta: &ParseNestedMeta<'_>) -> bool {
-		meta.path.is_ident("custom")
-	}
+	fn create_nested(&self, field: &FieldAttributes) -> TokenStream {
+		let reference = field.get_reference();
+		let field_name = field.get_name();
+		let field_type = field.get_type();
 
-	fn create_custom(&self, field_name: &Option<Ident>, meta: ParseNestedMeta<'_>) -> TokenStream {
-		let function = get_ident_from_nested_meta(&meta);
-		ValidationFactory::create_custom_from(field_name, &meta, function)
-	}
-
-	fn create_nested(&self, field_name: &Option<Ident>, field_type: &Type) -> TokenStream {
 		quote! {
-		  if let Err(e) = <#field_type as Validation>::validate(&self.#field_name) {
+		  if let Err(e) = <#field_type as Validation>::validate(&#reference) {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
-					stringify!(#field_name),
+					#field_name,
 				)));
 		  }
 		}

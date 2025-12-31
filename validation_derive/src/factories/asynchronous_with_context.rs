@@ -1,16 +1,9 @@
 use crate::{
-	Output,
-	extractors::ident::get_ident_from_nested_meta,
-	factories::{
-		asynchronous::AsyncValidationFactory, core::AbstractValidationFactory, default::ValidationFactory,
-		with_context::ValidationWithContextFactory,
-	},
-	import_async_trait, import_validation,
+	Output, factories::core::AbstractValidationFactory, fields::FieldAttributes, import_async_trait, import_validation,
 };
-use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, Type, meta::ParseNestedMeta, spanned::Spanned};
+use syn::{Ident, Type};
 
 pub struct AsyncValidationWithContextFactory<'a> {
 	name: &'a Ident,
@@ -20,27 +13,6 @@ pub struct AsyncValidationWithContextFactory<'a> {
 impl<'a> AsyncValidationWithContextFactory<'a> {
 	pub fn new(name: &'a Ident, context: &'a Type) -> Self {
 		Self { name, context }
-	}
-
-	pub fn create_custom_from(
-		field_name: &Option<Ident>,
-		meta: &ParseNestedMeta<'_>,
-		function: Option<Ident>,
-	) -> TokenStream {
-		if function.is_none() {
-			let span = meta.path.span();
-			emit_error!(
-			  span, "async_custom_with_context need a function";
-				help = "#[validate(custom_with_context(my_function))] pub name: String";
-				note = "async fn my_function(name: &str, context: &C) -> Result<(), ValidationError>"
-			);
-		}
-
-		quote! {
-			if let Err(e) = #function(&self.#field_name, context).await {
-			  errors.push(e);
-			}
-		}
 	}
 }
 
@@ -83,36 +55,17 @@ impl<'a> AbstractValidationFactory for AsyncValidationWithContextFactory<'a> {
 		.into()
 	}
 
-	fn meta_is_custom(&self, meta: &ParseNestedMeta<'_>) -> bool {
-		meta.path.is_ident("custom")
-			|| meta.path.is_ident("async_custom")
-			|| meta.path.is_ident("custom_with_context")
-			|| meta.path.is_ident("async_custom_with_context")
-	}
-
-	fn create_custom(&self, field_name: &Option<Ident>, meta: ParseNestedMeta<'_>) -> TokenStream {
-		let function = get_ident_from_nested_meta(&meta);
-
-		match meta {
-			m if meta.path.is_ident("custom") => ValidationFactory::create_custom_from(field_name, &m, function),
-			m if meta.path.is_ident("async_custom") => {
-				AsyncValidationFactory::create_custom_from(field_name, &m, function)
-			}
-			m if meta.path.is_ident("custom_with_context") => {
-				ValidationWithContextFactory::create_custom_from(field_name, &m, function)
-			}
-			m => AsyncValidationWithContextFactory::create_custom_from(field_name, &m, function),
-		}
-	}
-
-	fn create_nested(&self, field_name: &Option<Ident>, field_type: &Type) -> TokenStream {
+	fn create_nested(&self, field: &FieldAttributes) -> TokenStream {
+		let reference = field.get_reference();
+		let field_name = field.get_name();
+		let field_type = field.get_type();
 		let context = &self.context;
 
 		quote! {
-		  if let Err(e) = <#field_type as AsyncValidationWithContext<#context>>::async_validate_with_context(&self.#field_name, &context).await {
+		  if let Err(e) = <#field_type as AsyncValidationWithContext<#context>>::async_validate_with_context(&#reference, &context).await {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
-					stringify!(#field_name),
+					#field_name,
 				)));
 			}
 		}

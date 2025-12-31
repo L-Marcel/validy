@@ -1,13 +1,4 @@
-pub mod contains;
-#[cfg(feature = "email")]
-pub mod email;
-pub mod inline;
-#[cfg(feature = "ip")]
-pub mod ip;
-pub mod iter;
-pub mod length;
-#[cfg(feature = "pattern")]
-pub mod pattern;
-pub mod range;
-#[cfg(feature = "pattern")]
-pub mod url;
+#[cfg(feature = "modification")]
+pub mod modification;
+#[cfg(feature = "validation")]
+pub mod validation;
