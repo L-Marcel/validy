@@ -43,6 +43,10 @@ impl FieldAttributes {
 		}
 	}
 
+	pub fn get_modifications(&self) -> usize {
+		self.modifications
+	}
+
 	pub fn increment_modifications(&mut self) {
 		self.modifications += 1;
 	}

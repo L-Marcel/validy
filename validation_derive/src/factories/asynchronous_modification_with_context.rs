@@ -5,19 +5,19 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Ident, Type};
 
-pub struct ValidationWithContextFactory<'a> {
+pub struct AsyncModificationWithContextFactory<'a> {
 	name: &'a Ident,
 	context: &'a Type,
 }
 
-impl<'a> ValidationWithContextFactory<'a> {
+impl<'a> AsyncModificationWithContextFactory<'a> {
 	pub fn new(name: &'a Ident, context: &'a Type) -> Self {
 		Self { name, context }
 	}
 }
 
-impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
-	fn create(&self, operations: Vec<TokenStream>, _: Vec<FieldAttributes>) -> Output {
+impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
+	fn create(&self, operations: Vec<TokenStream>, fields: Vec<FieldAttributes>) -> Output {
 		let async_trait_import = import_async_trait();
 		let import = import_validation();
 
@@ -25,17 +25,30 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 		let context = &self.context;
 		let operations = &operations;
 
+		let commits = fields
+			.into_iter()
+			.filter(|field| field.get_modifications() > 0)
+			.map(|field| {
+				let reference = field.get_reference();
+				let original_reference = field.get_original_reference();
+				quote! {
+				  #original_reference = #reference;
+				}
+			});
+
 		quote! {
 		  use #import;
 		  use #async_trait_import;
 
-		  impl ValidateWithContext<#context> for #name {
-			  fn validate_with_context(&self, context: &#context) -> Result<(), ValidationErrors> {
+			#[async_trait]
+		  impl AsyncValidateAndModificateWithContext<#context> for #name {
+			  async fn async_validate_and_modificate_with_context(&mut self, context: &#context) -> Result<(), ValidationErrors> {
 					let mut errors = Vec::<ValidationError>::new();
 
 				  #(#operations)*
 
 				  if errors.is_empty() {
+						#(#commits)*
 					  Ok(())
 				  } else {
 						let map: ValidationErrors = errors
@@ -50,46 +63,26 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 				  }
 			  }
 		  }
-
-			#[async_trait]
-		  impl AsyncValidateWithContext<#context> for #name
-		  where
-				#context: Send + Sync,
-		  {
-			  async fn async_validate_with_context(&self, context: &#context) -> Result<(), ValidationErrors> {
-				  self.validate_with_context(context)
-			  }
-		  }
-
-			#[async_trait]
-		  impl AsyncValidateAndModificateWithContext<#context> for #name {
-			  async fn async_validate_and_modificate_with_context(&mut self, context: &#context) -> Result<(), ValidationErrors> {
-					self.validate_with_context(context)
-				}
-			}
-
-			impl ValidateAndModificateWithContext<#context> for #name {
-			  fn validate_and_modificate_with_context(&mut self, context: &#context) -> Result<(), ValidationErrors> {
-					self.validate_with_context(context)
-				}
-			}
 		}
 		.into()
 	}
 
 	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
+		field.increment_modifications();
+		let new_reference = field.get_reference();
 		let field_name = field.get_name();
 		let field_type = field.get_type();
 		let context = &self.context;
 
 		quote! {
-		  if let Err(e) = <#field_type as ValidateWithContext<#context>>::validate_with_context(&#reference, &context) {
+		  let mut #new_reference = #reference.clone();
+		  if let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context>>::async_validate_and_modificate_with_context(&mut #new_reference, context).await {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
 					#field_name,
 				)));
-			}
+		  }
 		}
 	}
 }

@@ -5,36 +5,48 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-pub struct AsyncValidationFactory<'a> {
+pub struct AsyncModificationFactory<'a> {
 	name: &'a Ident,
 }
 
-impl<'a> AsyncValidationFactory<'a> {
+impl<'a> AsyncModificationFactory<'a> {
 	pub fn new(name: &'a Ident) -> Self {
 		Self { name }
 	}
 }
 
-impl<'a> AbstractValidationFactory for AsyncValidationFactory<'a> {
-	fn create(&self, operations: Vec<TokenStream>, _: Vec<FieldAttributes>) -> Output {
+impl<'a> AbstractValidationFactory for AsyncModificationFactory<'a> {
+	fn create(&self, operations: Vec<TokenStream>, fields: Vec<FieldAttributes>) -> Output {
 		let async_trait_import = import_async_trait();
 		let import = import_validation();
 
 		let name = &self.name;
 		let operations = &operations;
 
+		let commits = fields
+			.into_iter()
+			.filter(|field| field.get_modifications() > 0)
+			.map(|field| {
+				let reference = field.get_reference();
+				let original_reference = field.get_original_reference();
+				quote! {
+				  #original_reference = #reference;
+				}
+			});
+
 		quote! {
 		  use #import;
 		  use #async_trait_import;
 
 			#[async_trait]
-		  impl AsyncValidate for #name {
-			  async fn async_validate(&self) -> Result<(), ValidationErrors> {
+		  impl AsyncValidateAndModificate for #name {
+			  async fn async_validate_and_modificate(&mut self) -> Result<(), ValidationErrors> {
 					let mut errors = Vec::<ValidationError>::new();
 
 				  #(#operations)*
 
 				  if errors.is_empty() {
+						#(#commits)*
 					  Ok(())
 				  } else {
 						let map: ValidationErrors = errors
@@ -51,29 +63,25 @@ impl<'a> AbstractValidationFactory for AsyncValidationFactory<'a> {
 		  }
 
 			#[async_trait]
-		  impl<C> AsyncValidateWithContext<C> for #name {
-			  async fn async_validate_with_context(&self, _: &C) -> Result<(), ValidationErrors> {
-				  self.async_validate().await
+		  impl<C> AsyncValidateAndModificateWithContext<C> for #name {
+			  async fn async_validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
+				  self.async_validate_and_modificate().await
 			  }
 		  }
-
-			#[async_trait]
-		  impl AsyncValidateAndModificate for #name {
-			  async fn async_validate_and_modificate(&mut self) -> Result<(), ValidationErrors> {
-					 self.async_validate().await
-				}
-			}
 		}
 		.into()
 	}
 
 	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
+		field.increment_modifications();
+		let new_reference = field.get_reference();
 		let field_name = field.get_name();
 		let field_type = field.get_type();
 
 		quote! {
-		  if let Err(e) = <#field_type as AsyncValidate>::validate(&#reference).await {
+		  let mut #new_reference = #reference.clone();
+		  if let Err(e) = <#field_type as AsyncValidateAndModificate>::async_validate_and_modificate(&mut #new_reference).await {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
 					#field_name,

@@ -16,7 +16,7 @@ impl<'a> ValidationFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
-	fn create(&self, operations: Vec<TokenStream>) -> Output {
+	fn create(&self, operations: Vec<TokenStream>, _: Vec<FieldAttributes>) -> Output {
 		let async_trait_import = import_async_trait();
 		let import = import_validation();
 
@@ -50,7 +50,7 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 		  }
 
 		  impl<C> ValidateWithContext<C> for #name {
-			  fn validate_with_context(&self, context: &C) -> Result<(), ValidationErrors> {
+			  fn validate_with_context(&self, _: &C) -> Result<(), ValidationErrors> {
 				  self.validate()
 			  }
 		  }
@@ -68,11 +68,37 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 				  self.validate()
 			  }
 		  }
+
+			#[async_trait]
+		  impl AsyncValidateAndModificate for #name {
+			  async fn async_validate_and_modificate(&mut self) -> Result<(), ValidationErrors> {
+					 self.validate()
+				}
+			}
+
+			#[async_trait]
+		  impl<C> AsyncValidateAndModificateWithContext<C> for #name {
+			  async fn async_validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
+					self.validate()
+				}
+			}
+
+		  impl ValidateAndModificate for #name {
+			  fn validate_and_modificate(&mut self) -> Result<(), ValidationErrors> {
+					self.validate()
+				}
+		  }
+
+			impl<C> ValidateAndModificateWithContext<C> for #name {
+			  fn validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
+					self.validate()
+				}
+			}
 		}
 		.into()
 	}
 
-	fn create_nested(&self, field: &FieldAttributes) -> TokenStream {
+	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
 		let field_name = field.get_name();
 		let field_type = field.get_type();

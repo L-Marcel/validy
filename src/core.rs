@@ -1,6 +1,6 @@
 use crate::builders::ValidationErrorBuilder;
 use async_trait::async_trait;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{borrow::Cow, collections::HashMap};
 #[cfg(feature = "derive")]
 pub use validation_derive::*;
@@ -55,6 +55,8 @@ pub trait ValidateWithContext<C> {
 pub trait AsyncValidateWithContext<C>: Send + Sync {
 	async fn async_validate_with_context(&self, context: &C) -> Result<(), ValidationErrors>;
 }
+
+//...
 
 pub trait ValidateAndModificate {
 	fn validate_and_modificate(&mut self) -> Result<(), ValidationErrors>;

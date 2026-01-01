@@ -1,7 +1,7 @@
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Index, meta::ParseNestedMeta, spanned::Spanned};
+use syn::{Data, DeriveInput, Field, Fields, Index, meta::ParseNestedMeta, spanned::Spanned};
 
 use crate::{
 	attributes::ValidationAttributes,
@@ -54,11 +54,12 @@ pub fn get_operations(
 	fields: &Fields,
 	factory: &dyn AbstractValidationFactory,
 	attributes: &ValidationAttributes,
-) -> Vec<TokenStream> {
-	fields
+) -> (Vec<TokenStream>, Vec<FieldAttributes>) {
+	let mut fields_attributes = Vec::<FieldAttributes>::new();
+	let operations = fields
 		.iter()
 		.enumerate()
-		.flat_map(|(index, field)| {
+		.flat_map(|(index, field): (usize, &Field)| {
 			let mut operations = Vec::<TokenStream>::new();
 
 			let field_name = &field.ident;
@@ -98,9 +99,13 @@ pub fn get_operations(
 				}
 			}
 
+			fields_attributes.push(field_attributes);
+
 			operations
 		})
-		.collect()
+		.collect();
+
+	(operations, fields_attributes)
 }
 
 pub fn get_validation_by_attr_macro(

@@ -14,8 +14,8 @@ use crate::{
 	types::{Input, Output},
 };
 
-use proc_macro_error::proc_macro_error;
-use syn::DeriveInput;
+use proc_macro_error::{emit_error, proc_macro_error};
+use syn::{DeriveInput, spanned::Spanned};
 
 /// **Struct options:** `#[validate(asyncronous = <bool>, context = <type>, deserialize = <bool>, modify = <bool>)]`
 /// * Configures global validation behavior, context injection, and serialization hooks.
@@ -71,8 +71,15 @@ pub fn validation_macro(input: Input) -> Output {
 
 fn impl_validation_macro(ast: &DeriveInput) -> Output {
 	let fields = get_fields(ast);
-	let attributes = get_attributes(ast);
+	let mut attributes = get_attributes(ast);
+
+	if attributes.modify && attributes.payload {
+		emit_error!(ast.span(), "payload implies modify");
+	}
+
+	attributes.modify = attributes.modify || attributes.payload;
+
 	let factory = get_factory(&ast.ident, &attributes);
-	let operations = get_operations(fields, factory.as_ref(), &attributes);
-	factory.create(operations)
+	let (operations, fields_attributes) = get_operations(fields, factory.as_ref(), &attributes);
+	factory.create(operations, fields_attributes)
 }

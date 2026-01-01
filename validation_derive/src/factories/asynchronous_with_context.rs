@@ -17,7 +17,7 @@ impl<'a> AsyncValidationWithContextFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for AsyncValidationWithContextFactory<'a> {
-	fn create(&self, operations: Vec<TokenStream>) -> Output {
+	fn create(&self, operations: Vec<TokenStream>, _: Vec<FieldAttributes>) -> Output {
 		let async_trait_import = import_async_trait();
 		let import = import_validation();
 
@@ -51,11 +51,18 @@ impl<'a> AbstractValidationFactory for AsyncValidationWithContextFactory<'a> {
 				  }
 			  }
 		  }
+
+			#[async_trait]
+		  impl AsyncValidateAndModificateWithContext<#context> for #name {
+			  async fn async_validate_and_modificate_with_context(&mut self, context: &#context) -> Result<(), ValidationErrors> {
+				  self.async_validate_with_context(context);
+				}
+			}
 		}
 		.into()
 	}
 
-	fn create_nested(&self, field: &FieldAttributes) -> TokenStream {
+	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
 		let field_name = field.get_name();
 		let field_type = field.get_type();

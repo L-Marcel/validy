@@ -2,8 +2,11 @@ use crate::{
 	Output,
 	attributes::ValidationAttributes,
 	factories::{
-		asynchronous::AsyncValidationFactory, asynchronous_with_context::AsyncValidationWithContextFactory,
-		default::ValidationFactory, with_context::ValidationWithContextFactory,
+		asynchronous::AsyncValidationFactory, asynchronous_modification::AsyncModificationFactory,
+		asynchronous_modification_with_context::AsyncModificationWithContextFactory,
+		asynchronous_with_context::AsyncValidationWithContextFactory, default::ValidationFactory,
+		modification::ModificationFactory, modification_with_context::ModificationWithContextFactory,
+		with_context::ValidationWithContextFactory,
 	},
 	fields::FieldAttributes,
 };
@@ -11,8 +14,8 @@ use proc_macro2::TokenStream;
 use syn::Ident;
 
 pub trait AbstractValidationFactory {
-	fn create(&self, operations: Vec<TokenStream>) -> Output;
-	fn create_nested(&self, field: &FieldAttributes) -> TokenStream;
+	fn create(&self, operations: Vec<TokenStream>, fields: Vec<FieldAttributes>) -> Output;
+	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream;
 }
 
 pub fn get_factory<'a>(
@@ -25,9 +28,13 @@ pub fn get_factory<'a>(
 		&attributes.modify,
 		&attributes.payload,
 	) {
-		(Some(context), true, _, _) => Box::new(AsyncValidationWithContextFactory::new(name, context)),
-		(Some(context), false, _, _) => Box::new(ValidationWithContextFactory::new(name, context)),
-		(None, true, _, _) => Box::new(AsyncValidationFactory::new(name)),
+		(Some(context), true, false, false) => Box::new(AsyncValidationWithContextFactory::new(name, context)),
+		(Some(context), false, false, false) => Box::new(ValidationWithContextFactory::new(name, context)),
+		(Some(context), false, true, false) => Box::new(AsyncModificationWithContextFactory::new(name, context)),
+		(Some(context), true, true, false) => Box::new(ModificationWithContextFactory::new(name, context)),
+		(None, true, true, false) => Box::new(AsyncModificationFactory::new(name)),
+		(None, false, true, false) => Box::new(ModificationFactory::new(name)),
+		(None, true, false, false) => Box::new(AsyncValidationFactory::new(name)),
 		_ => Box::new(ValidationFactory::new(name)),
 	}
 }

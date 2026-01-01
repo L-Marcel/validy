@@ -1,5 +1,9 @@
 pub mod asynchronous;
+pub mod asynchronous_modification;
+pub mod asynchronous_modification_with_context;
 pub mod asynchronous_with_context;
 pub mod core;
 pub mod default;
+pub mod modification;
+pub mod modification_with_context;
 pub mod with_context;
