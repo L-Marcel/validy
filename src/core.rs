@@ -75,19 +75,19 @@ pub trait AsyncValidateAndModificateWithContext<C>: Send + Sync {
 }
 
 pub trait ValidateAndParse<W>: Sized {
-	fn validate_and_parse(wrapper: W) -> Result<Self, ValidationErrors>;
+	fn validate_and_parse(wrapper: &W) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
 pub trait AsyncValidateAndParse<W>: Sized + Send + Sync {
-	async fn async_validate_and_parse(wrapper: W) -> Result<Self, ValidationErrors>;
+	async fn async_validate_and_parse(wrapper: &W) -> Result<Self, ValidationErrors>;
 }
 
 pub trait ValidateAndParseWithContext<W, C>: Sized {
-	fn validate_and_parse_with_context(wrapper: W, context: &C) -> Result<Self, ValidationErrors>;
+	fn validate_and_parse_with_context(wrapper: &W, context: &C) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
 pub trait AsyncValidateAndParseWithContext<W, C>: Sized + Send + Sync {
-	async fn async_validate_and_parse_with_context(wrapper: W, context: &C) -> Result<Self, ValidationErrors>;
+	async fn async_validate_and_parse_with_context(wrapper: &W, context: &C) -> Result<Self, ValidationErrors>;
 }

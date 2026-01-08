@@ -3,7 +3,7 @@ use crate::{
 	imports::import_serde_deserialize,
 };
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::Ident;
 
 pub struct PayloadFactory<'a> {
@@ -80,59 +80,61 @@ impl<'a> AbstractValidationFactory for PayloadFactory<'a> {
 
 		let wrapper_ident = format_ident!("{}Wrapper", name);
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  use #import;
-		  use #async_trait_import;
+			use #async_trait_import;
 			use #serde_deserialize_import;
 
-			#[derive(Deserialize)]
-			struct #wrapper_ident {
-			  #(#field_declarations)*
+      #[derive(Deserialize)]
+      struct #wrapper_ident {
+        #(#field_declarations)*
+      }
+
+      impl ValidateAndParse<#wrapper_ident> for #name {
+        fn validate_and_parse(___wrapper: &#wrapper_ident) -> Result<Self, ValidationErrors> {
+          let mut errors = Vec::<ValidationError>::new();
+
+          #(#operations)*
+
+          if errors.is_empty() {
+            Ok(Self { #(#commits)* })
+          } else {
+           	let map: ValidationErrors = errors
+              .into_iter()
+              .map(|e| match e {
+              ValidationError::Node(e) => (e.field.clone(), ValidationError::Node(e)),
+              ValidationError::Leaf(e) => (e.field.clone(), ValidationError::Leaf(e)),
+              })
+              .collect();
+
+            Err(map)
+          }
+        }
+      }
+
+		  impl<C> ValidateAndParseWithContext<#wrapper_ident, C> for #name {
+			  fn validate_and_parse_with_context(___wrapper: &#wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
+					<#name as ValidateAndParse<#wrapper_ident>>::validate_and_parse(___wrapper)
+				}
 			}
 
-		  impl ValidateAndParse<#wrapper_ident> for #name {
-			  fn validate_and_parse(___wrapper: #wrapper_ident) -> Result<Self, ValidationErrors> {
-					let mut errors = Vec::<ValidationError>::new();
+			#[async_trait]
+			impl AsyncValidateAndParse<#wrapper_ident> for #name {
+			  async fn async_validate_and_parse(___wrapper: &#wrapper_ident) -> Result<Self, ValidationErrors> {
+					<#name as ValidateAndParse<#wrapper_ident>>::validate_and_parse(___wrapper)
+				}
+			}
 
-				  #(#operations)*
-
-				  if errors.is_empty() {
-					  Ok(#name { #(#commits)* })
-				  } else {
-						let map: ValidationErrors = errors
-							.into_iter()
-							.map(|e| match e {
-								ValidationError::Node(e) => (e.field.clone(), ValidationError::Node(e)),
-								ValidationError::Leaf(e) => (e.field.clone(), ValidationError::Leaf(e)),
-							})
-							.collect();
-
-					  Err(map)
-				  }
-			  }
+			#[async_trait]
+			impl<C> AsyncValidateAndParseWithContext<#wrapper_ident, C> for #name {
+			  async fn async_validate_and_parse_with_context(___wrapper: &#wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
+					<#name as ValidateAndParse<#wrapper_ident>>::validate_and_parse(___wrapper)
+				}
 		  }
+		};
 
-		 //  impl<C> ValidateAndModificateWithContext<C> for #name {
-			//   fn validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
-			// 	  self.validate_and_modificate()
-			//   }
-		 //  }
-
-			// #[async_trait]
-		 //  impl AsyncValidateAndModificate for #name {
-			//   async fn async_validate_and_modificate(&mut self) -> Result<(), ValidationErrors> {
-			// 	  self.validate_and_modificate()
-			//   }
-		 //  }
-
-			// #[async_trait]
-		 //  impl<C> AsyncValidateAndModificateWithContext<C> for #name {
-			//   async fn async_validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
-			// 	  self.validate_and_modificate()
-			//   }
-		 //  }
-		}
-		.into()
+		result.into()
 	}
 
 	fn create_nested(&self, field: &mut FieldAttributes) -> TokenStream {
@@ -141,10 +143,11 @@ impl<'a> AbstractValidationFactory for PayloadFactory<'a> {
 		let new_reference = field.get_reference();
 		let field_name = field.get_name();
 		let field_type = field.get_type();
+		let wrapper_ident = format_ident!("{}Wrapper", field_type.to_token_stream().to_string());
 
 		quote! {
 		  let mut #new_reference = #reference.clone();
-		  if let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(&mut #new_reference) {
+		  if let Err(e) = <#field_type as ValidateAndParse<#wrapper_ident>>::validate_and_parse(&#new_reference) {
 				errors.push(ValidationError::Node(NestedValidationError::from(
 					e,
 					#field_name,

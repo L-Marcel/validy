@@ -52,10 +52,11 @@ impl FieldAttributes {
 	pub fn get_operations(&mut self) -> TokenStream {
 		if self.as_payload {
 			let field_name = &self.get_name();
-			let field_type = &self.get_initial_type();
+			let field_type = &self.get_final_type();
 			let reference = &self.get_reference();
 			self.increment_modifications();
 			let new_reference = &self.get_reference();
+			let wrapper_reference = &self.get_wrapper_reference();
 			let operations = &self.operations;
 
 			let name = match (&self.name, &self.index) {
@@ -70,7 +71,7 @@ impl FieldAttributes {
 			if self.is_option() {
 				quote! {
 					let mut #new_reference: #field_type = None;
-					if let Some(#unwrapped) =  {
+					if let Some(#unwrapped) = #wrapper_reference.as_ref() {
 						#(#operations)*
 						#new_reference = Some(#reference);
 					}
@@ -78,11 +79,10 @@ impl FieldAttributes {
 			} else {
 				let code = &self.required_args.code;
 				let message = &self.required_args.message;
-				let wrapper_reference = &self.get_wrapper_reference();
 
 				quote! {
 				  let mut #new_reference: #field_type = None;
-				  if let Some(#unwrapped) = #wrapper_reference {
+				  if let Some(#unwrapped) = #wrapper_reference.as_ref() {
 						#(#operations)*
 						#new_reference = Some(#reference);
 					} else {
@@ -119,6 +119,23 @@ impl FieldAttributes {
 
 	pub fn get_type(&self) -> &Type {
 		&self._type
+	}
+
+	pub fn get_final_type(&self) -> Type {
+		let _type = &self._type;
+		if self.as_payload && !self.is_option() {
+			let _option_type: Type = parse_quote! {
+				Option<#_type>
+			};
+
+			_option_type
+		} else {
+			let __type: Type = parse_quote! {
+			  #_type
+			};
+
+			__type
+		}
 	}
 
 	pub fn get_initial_type(&self) -> Type {
