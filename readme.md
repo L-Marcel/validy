@@ -4,22 +4,22 @@
 
 A powerful and flexible Rust library based on procedural macros for `validation`, `modification`, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with `Axum`. Inspired by `Validator`, `Validify` and `Garde`.
 
-- [📝 Installation](#installation)
-- [🚀 Quick Start](#quick-start)
-- [🔎 Validation Flow](#validation-flow)
-- [🔌 Axum Integration](#axum-integration)
-- [🚩 Feature Flags](#feature-flags)
-- [🚧 Validation Rules](#validation-rules)
+- [📝 Installation](#-installation)
+- [🚀 Quick Start](#-quick-start)
+- [🔎 Validation Flow](#-validation-flow)
+- [🔌 Axum Integration](#-axum-integration)
+- [🚩 Feature Flags](#-feature-flags)
+- [🚧 Validation Rules](#-validation-rules)
   - [For `optional` fields](#for-optional-fields)
   - [For `string` fields](#for-string-fields)
   - [For `collection` fields](#for-collection-fields)
   - [For `numbers` fields](#for-numbers-fields)
   - [For `date` or `time` fields](#for-date-or-time-fields)
   - [Custom rules](#custom-rules)
-- [🔨 Modification Rules](#modification-rules)
-  - [For `string` fields](#for-string-fields)
-  - [Custom rules](#custom-rules)
-- [🔧 Special Rules](#special-rules)
+- [🔨 Modification Rules](#-modification-rules)
+  - [For `string` fields](#for-string-fields-1)
+  - [Custom rules](#custom-rules-1)
+- [🔧 Special Rules](#-special-rules)
 
 ## 📝 Installation
 
