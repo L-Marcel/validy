@@ -11,7 +11,7 @@ use crate::{
 	factories::core::AbstractValidationFactory,
 	fields::FieldAttributes,
 	primitives::{
-		collections::{any::create_any, none::create_none},
+		collections::{allowlist::create_allowlist, blocklist::create_blocklist},
 		customs::{
 			modification::{
 				async_custom::create_async_custom_modification,
@@ -136,8 +136,8 @@ pub fn get_validation_by_attr_macro(
 		m if m.path.is_ident("range") => create_range(m.input, field, imports),
 		m if m.path.is_ident("length") => create_length(m.input, field, imports),
 		m if m.path.is_ident("contains") => create_contains(m.input, field, imports),
-		m if m.path.is_ident("any") => create_any(m.input, field, imports),
-		m if m.path.is_ident("none") => create_none(m.input, field, imports),
+		m if m.path.is_ident("allowlist") => create_allowlist(m.input, field, imports),
+		m if m.path.is_ident("blocklist") => create_blocklist(m.input, field, imports),
 		m if m.path.is_ident("time") => create_time(m.input, field, imports),
 		m if m.path.is_ident("before_now") => create_before_now(m.input, field, imports),
 		m if m.path.is_ident("after_now") => create_after_now(m.input, field, imports),
