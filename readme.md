@@ -12,7 +12,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [🚧 Validation Rules](#-validation-rules)
   - [For `required` fields](#for-required-fields)
   - [For `string` fields](#for-string-fields)
-  - [For `collection` fields](#for-collection-fields)
+  - [For `collection` or `single` fields](#for-collection-or-single-fields)
   - [For `numbers` fields](#for-numbers-fields)
   - [For `date` or `time` fields](#for-date-or-time-fields)
   - [Custom rules](#custom-rules)
@@ -245,31 +245,31 @@ Primitive rules of `#[validate(<rule>, ...)]` rule group.
 | `pattern`(pattern = \<regex>, message = <?string>, code = <?string>) | Validates that the string matches the provided Regex  pattern. |
 | `suffix`(suffix = \<string>, message = <?string>, code = <?string>) | Validates that the string ends with the specified suffix. |
 | `prefix`(prefix = \<string>, message = <?string>, code = <?string>) | Validates that the string starts with the specified prefix. |
-| `length`(range = \<range>, message = <?string>, code = <?string>) | Validates that the length (string or collection) is within  limits. |
+| `length`(range = \<range>, message = <?string>, code = <?string>) | Validates that the length (string or collection) is within limits. |
 
-### For `collection` fields
+### For `collection` or `single` fields
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `length`(range = \<range>, message = <?string>, code = <?string>) | Validates that the length (string or collection) is within  limits. |
-| `any`(items = \<array>, message = <?string>, code = <?string>) | Validates that the value is present in the allowed list  (allowlist). |
-| `none`(items = \<array>, message = <?string>, code = <?string>) | Validates that the value is NOT present in the forbidden list  (blocklist). |
+| `length`(range = \<range>, message = <?string>, code = <?string>) | Validates that the length (string or collection) is within limits. |
+| `allowlist`(mode = <"SINGLE" | "COLLECTION">, items = \<array>, message = <?string>, code = <?string>) | Validates that the value or collection items is present in the allowed list (allowlist). |
+| `blocklist`(mode = <"SINGLE" | "COLLECTION">, items = \<array>, message = <?string>, code = <?string>) | Validates that the value or collection items is NOT present in the forbidden list (blocklist). |
 
 ### For `numbers` fields
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `range`(range = \<range>, message = <?string>, code = <?string>) | Validates that the number falls within the specified numeric  range. |
+| `range`(range = \<range>, message = <?string>, code = <?string>) | Validates that the number falls within the specified numeric range. |
 
 ### For `date` or `time` fields
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified time/date  format. Not parse the string. |
-| `naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified naive  time format. Not parse the string. |
-| `after_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the date/time is strictly after the  current time. |
-| `before_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the date/time is strictly before  the current time. |
-| `now`(ms_tolerance = <?int>, message = <?string>, code = <?string>) | Validates that the date/time matches the current time  within a tolerance (default: 500ms). |
+| `time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified time/date format. Not parse the string. |
+| `naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified naive time format. Not parse the string. |
+| `after_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the date/time is strictly after the current time. |
+| `before_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the date/time is strictly before the current time. |
+| `now`(ms_tolerance = <?int>, message = <?string>, code = <?string>) | Validates that the date/time matches the current time within a tolerance (default: 500ms). |
 
 ### Custom rules
 
@@ -281,7 +281,7 @@ All with prefix `async_` requires that `asynchronous` configuration attribute is
 | `custom`(function = \<function>, params = <?array>) | Validates using a custom function. |
 | `custom_with_context`(function = \<function>, params = <?array>) | Validates using a custom function with access to the context. |
 | `async_custom`(function = \<function>, params = <?array>) | Validates using a custom async function. |
-| `async_custom_with_context`(function = \<function>, params = <?array>) | Validates using a custom async function with access to  the context. |
+| `async_custom_with_context`(function = \<function>, params = <?array>) | Validates using a custom async function with access to the context. |
 
 ## 🔨 Modification Rules
 
@@ -315,9 +315,9 @@ All with prefix `async_` requires that `asynchronous` configuration attribute is
 | :-------- | :------- |
 | `inline`(closure = \<closure>, params = <?array>) | Modifies the value using an inline closure. |
 | `custom`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom function. |
-| `custom_with_context`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom function with  context access. |
+| `custom_with_context`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom function with context access. |
 | `async_custom`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom async function. |
-| `async_custom_with_context`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom async  function with context access. |
+| `async_custom_with_context`(function = \<function>, params = <?array>) | Modifies the value in-place using a custom async function with context access. |
 
 ## 🔧 Special Rules
 
