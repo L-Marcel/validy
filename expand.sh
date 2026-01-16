@@ -17,5 +17,9 @@ cargo expand --all-features --test mod validation::suffix >> temp/suffix.rs || t
 cargo expand --all-features --test mod validation::url >> temp/url.rs || true
 cargo expand --all-features --test mod validation::pattern >> temp/pattern.rs || true
 cargo expand --all-features --test mod validation::option >> temp/option.rs || true
+cargo expand --all-features --test mod validation::time >> temp/time.rs || true
+cargo expand --all-features --test mod validation::naive_time >> temp/naive_time.rs || true
+cargo expand --all-features --test mod validation::after_now >> temp/after_now.rs || true
+cargo expand --all-features --test mod validation::before_now >> temp/before_now.rs || true
 
 cargo check --all-features --test mod

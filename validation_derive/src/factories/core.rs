@@ -18,7 +18,12 @@ use proc_macro2::TokenStream;
 use syn::{Ident, parse::ParseStream};
 
 pub trait AbstractValidationFactory {
-	fn create(&self, fields: Vec<FieldAttributes>, imports: &RefCell<ImportsSet>) -> Output;
+	fn create(
+		&self,
+		fields: Vec<FieldAttributes>,
+		attributes: &ValidationAttributes,
+		imports: &RefCell<ImportsSet>,
+	) -> Output;
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream;
 }
 

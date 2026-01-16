@@ -41,7 +41,8 @@ use crate::{
 		specials::{for_each::create_for_each, from_type::create_from_type},
 		time::{
 			after_now::create_after_now, before_now::create_before_now, default_time::create_time,
-			naive_time::create_naive_time, now::create_now,
+			naive_time::create_naive_time, now::create_now, parse_naive_date::create_parse_naive_date,
+			parse_naive_time::create_parse_naive_time, parse_time::create_parse_time,
 		},
 	},
 };
@@ -67,14 +68,14 @@ pub fn get_fields_attributes(
 		let field_type = &field.ty;
 
 		let mut field_attributes = match field_name {
-			Some(name) => FieldAttributes::from_named(field_type, name, attributes.payload),
+			Some(name) => FieldAttributes::from_named(field_type, name, attributes),
 			None => {
 				let index = Index {
 					index: index as u32,
 					span: field.span(),
 				};
 
-				FieldAttributes::from_unamed(field_type, &index, attributes.payload)
+				FieldAttributes::from_unamed(field_type, &index, attributes)
 			}
 		};
 
@@ -184,6 +185,9 @@ pub fn get_operation_by_attr_macro(
 		m if m.path.is_ident("kebab_case") => create_kebab_case(field, imports),
 		m if m.path.is_ident("shouty_kebab_case") => create_shouty_kebab_case(field, imports),
 		m if m.path.is_ident("train_case") => create_train_case(field, imports),
+		m if m.path.is_ident("parse_time") => create_parse_time(m.input, field, imports),
+		m if m.path.is_ident("parse_naive_time") => create_parse_naive_time(m.input, field, imports),
+		m if m.path.is_ident("parse_naive_date") => create_parse_naive_date(m.input, field, imports),
 		m if m.path.is_ident("inline") => create_inline_modification(m.input, field),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");

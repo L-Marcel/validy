@@ -43,7 +43,11 @@ impl ArgParser for NaiveTimeArgs {
 	}
 }
 
-pub fn create_naive_time(input: ParseStream, field: &FieldAttributes, imports: &RefCell<ImportsSet>) -> TokenStream {
+pub fn create_naive_time(
+	input: ParseStream,
+	field: &mut FieldAttributes,
+	imports: &RefCell<ImportsSet>,
+) -> TokenStream {
 	imports.borrow_mut().add(Import::ValidationFunction(
 		"time::validate_naive_time as validate_naive_time_fn",
 	));
@@ -64,9 +68,19 @@ pub fn create_naive_time(input: ParseStream, field: &FieldAttributes, imports: &
 		return quote! {};
 	}
 
-	quote! {
-		if let Err(e) = validate_naive_time_fn(&#reference, #format, #field_name, #code, #message) {
-		  errors.push(e);
-	  }
+	if field.is_ref() {
+		field.set_is_ref(true);
+		quote! {
+			if let Err(e) = validate_naive_time_fn(#reference, #format, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
+	} else {
+		field.set_is_ref(false);
+		quote! {
+			if let Err(e) = validate_naive_time_fn(&#reference, #format, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
 	}
 }

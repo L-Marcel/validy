@@ -2,15 +2,16 @@ use proc_macro2::{Span, TokenStream};
 use quote::{ToTokens, quote};
 use syn::{Ident, Index, LitStr, Type, parse_quote};
 
-use crate::primitives::option::required::RequiredArgs;
+use crate::{attributes::ValidationAttributes, primitives::option::required::RequiredArgs};
 
 pub struct FieldAttributes {
 	final_type: Type,
 	current_type: Type,
 	initial_type: Option<Type>,
 	required_args: RequiredArgs,
-	as_payload: bool,
-	as_ref: bool,
+	payload: bool,
+	modification: bool,
+	is_ref: bool,
 	operations: Vec<TokenStream>,
 	name: Option<Ident>,
 	index: Option<Index>,
@@ -19,14 +20,15 @@ pub struct FieldAttributes {
 }
 
 impl FieldAttributes {
-	pub fn from_named(final_type: &Type, name: &Ident, as_payload: bool) -> Self {
+	pub fn from_named(final_type: &Type, name: &Ident, attributes: &ValidationAttributes) -> Self {
 		FieldAttributes {
 			final_type: final_type.clone(),
 			current_type: final_type.clone(),
 			initial_type: None,
 			required_args: RequiredArgs::default(),
-			as_payload,
-			as_ref: false,
+			payload: attributes.payload,
+			modification: attributes.modify,
+			is_ref: false,
 			operations: Vec::new(),
 			name: Some(name.clone()),
 			index: None,
@@ -35,14 +37,15 @@ impl FieldAttributes {
 		}
 	}
 
-	pub fn from_unamed(final_type: &Type, index: &Index, as_payload: bool) -> Self {
+	pub fn from_unamed(final_type: &Type, index: &Index, attributes: &ValidationAttributes) -> Self {
 		FieldAttributes {
 			final_type: final_type.clone(),
 			current_type: final_type.clone(),
 			initial_type: None,
 			required_args: RequiredArgs::default(),
-			as_payload,
-			as_ref: false,
+			payload: attributes.payload,
+			modification: attributes.modify,
+			is_ref: false,
 			operations: Vec::new(),
 			name: None,
 			index: Some(index.clone()),
@@ -55,13 +58,13 @@ impl FieldAttributes {
 		self.operations.push(operation);
 	}
 
-	pub fn set_as_ref(&mut self, as_ref: bool) {
-		self.as_ref = as_ref;
+	pub fn set_is_ref(&mut self, is_ref: bool) {
+		self.is_ref = is_ref;
 	}
 
 	pub fn is_ref(&self) -> bool {
 		let operations_is_empty = self.operations.iter().all(|operation| operation.is_empty());
-		self.as_ref || (operations_is_empty && (self.is_payload() || self.is_option()))
+		self.is_ref || (operations_is_empty && (self.is_payload() || self.is_option()))
 	}
 
 	pub fn get_operations(&mut self) -> TokenStream {
@@ -74,7 +77,7 @@ impl FieldAttributes {
 		let unwrapped_final_name = format!("unwrapped_{}", name);
 		let unwrapped = Ident::new(&unwrapped_final_name, Span::call_site());
 
-		if self.as_payload {
+		if self.payload {
 			let field_name = &self.get_name();
 			let wrapper_final_type = &self.get_wrapper_final_type();
 			let reference = &self.get_reference();
@@ -117,24 +120,34 @@ impl FieldAttributes {
 				}
 			}
 		} else if self.is_option() {
-			let initial_type = self.get_initial_type();
-			let reference = &self.get_reference();
 			let original_reference = self.get_original_reference();
-			self.increment_modifications();
-			let operations = &self.operations;
-			let new_reference = self.get_reference();
 
-			let update = if self.is_ref() {
-				quote! { #new_reference = Some(#reference.clone()); }
+			if self.modification {
+				let initial_type = self.get_initial_type();
+				let reference = &self.get_reference();
+				self.increment_modifications();
+				let operations = &self.operations;
+				let new_reference = self.get_reference();
+
+				let update = if self.is_ref() {
+					quote! { #new_reference = Some(#reference.clone()); }
+				} else {
+					quote! { #new_reference = Some(#reference); }
+				};
+
+				quote! {
+				  let mut #new_reference: #initial_type = None;
+					if let Some(#unwrapped) = #original_reference.as_ref() {
+						#(#operations)*
+						#update
+					}
+				}
 			} else {
-				quote! { #new_reference = Some(#reference); }
-			};
-
-			quote! {
-			  let mut #new_reference: #initial_type = None;
-				if let Some(#unwrapped) = #original_reference.as_ref() {
-					#(#operations)*
-					#update
+				let operations = &self.operations;
+				quote! {
+					if let Some(#unwrapped) = #original_reference.as_ref() {
+						#(#operations)*
+					}
 				}
 			}
 		} else {
@@ -150,7 +163,7 @@ impl FieldAttributes {
 	}
 
 	pub fn is_payload(&self) -> bool {
-		self.as_payload
+		self.payload
 	}
 
 	pub fn is_option(&self) -> bool {
@@ -178,7 +191,7 @@ impl FieldAttributes {
 
 	pub fn get_wrapper_final_type(&self) -> Type {
 		let final_type = &self.final_type;
-		if self.as_payload && !self.is_option() {
+		if self.payload && !self.is_option() {
 			let option_type: Type = parse_quote! {
 				Option<#final_type>
 			};
@@ -199,7 +212,7 @@ impl FieldAttributes {
 			None => &self.final_type,
 		};
 
-		if self.as_payload && (!self.is_option() || self.initial_type.is_some()) {
+		if self.payload && (!self.is_option() || self.initial_type.is_some()) {
 			let option_type: Type = parse_quote! {
 				Option<#initial_type>
 			};
@@ -265,7 +278,7 @@ impl FieldAttributes {
 			_ => panic!("needs a field name or index"),
 		};
 
-		match (self.as_payload || self.is_option(), self.scopes, self.modifications) {
+		match (self.payload || self.is_option(), self.scopes, self.modifications) {
 			(false, 0, 0) => quote! { self.#suffix },
 			(true, 0, 0) => {
 				let name = match (&self.name, &self.index) {

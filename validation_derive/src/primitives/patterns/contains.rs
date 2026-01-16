@@ -65,14 +65,14 @@ pub fn create_contains(input: ParseStream, field: &mut FieldAttributes, imports:
 	}
 
 	if field.is_ref() {
-		field.set_as_ref(true);
+		field.set_is_ref(true);
 		quote! {
 			if let Err(e) = validate_contains_fn(#reference, #slice, #field_name, #code, #message) {
 			  errors.push(e);
 		  }
 		}
 	} else {
-		field.set_as_ref(false);
+		field.set_is_ref(false);
 		quote! {
 			if let Err(e) = validate_contains_fn(&#reference, #slice, #field_name, #code, #message) {
 			  errors.push(e);

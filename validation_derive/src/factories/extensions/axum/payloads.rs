@@ -2,8 +2,10 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::Ident;
 
-pub fn get_async_payload_axum_extension(struct_name: &Ident) -> TokenStream {
-	if !cfg!(feature = "axum") {
+use crate::attributes::ValidationAttributes;
+
+pub fn get_async_payload_axum_extension(struct_name: &Ident, attributes: &ValidationAttributes) -> TokenStream {
+	if !cfg!(feature = "axum") || !attributes.axum {
 		quote! {}
 	} else {
 		#[rustfmt::skip]
@@ -43,8 +45,11 @@ pub fn get_async_payload_axum_extension(struct_name: &Ident) -> TokenStream {
 	}
 }
 
-pub fn get_async_payload_with_context_axum_extension(struct_name: &Ident) -> TokenStream {
-	if !cfg!(feature = "axum") {
+pub fn get_async_payload_with_context_axum_extension(
+	struct_name: &Ident,
+	attributes: &ValidationAttributes,
+) -> TokenStream {
+	if !cfg!(feature = "axum") || !attributes.axum {
 		quote! {}
 	} else {
 		#[rustfmt::skip]

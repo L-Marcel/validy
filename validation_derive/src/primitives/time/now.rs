@@ -43,7 +43,7 @@ impl ArgParser for NowArgs {
 	}
 }
 
-pub fn create_now(input: ParseStream, field: &FieldAttributes, imports: &RefCell<ImportsSet>) -> TokenStream {
+pub fn create_now(input: ParseStream, field: &mut FieldAttributes, imports: &RefCell<ImportsSet>) -> TokenStream {
 	imports.borrow_mut().add(Import::ValidationFunction(
 		"time::validate_is_now as validate_is_now_fn",
 	));
@@ -63,9 +63,19 @@ pub fn create_now(input: ParseStream, field: &FieldAttributes, imports: &RefCell
 		Err(_) => NowArgs::default(),
 	};
 
-	quote! {
-		if let Err(e) = validate_is_now_fn(&#reference, #ms_tolerance, #field_name, #code, #message) {
-		  errors.push(e);
-	  }
+	if field.is_ref() {
+		field.set_is_ref(true);
+		quote! {
+			if let Err(e) = validate_is_now_fn(#reference, #ms_tolerance, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
+	} else {
+		field.set_is_ref(false);
+		quote! {
+			if let Err(e) = validate_is_now_fn(&#reference, #ms_tolerance, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
 	}
 }

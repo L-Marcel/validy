@@ -67,7 +67,7 @@ pub fn create_inline_validation(input: ParseStream, field: &mut FieldAttributes)
 	let extra_args = params.iter().flat_map(|p| &p.elems).map(|arg| quote! { #arg });
 
 	if field.is_ref() {
-		field.set_as_ref(true);
+		field.set_is_ref(true);
 		quote! {
 		  if !(#closure)(#reference, #(#extra_args),*) {
 			  errors.push(ValidationError::builder()
@@ -79,7 +79,7 @@ pub fn create_inline_validation(input: ParseStream, field: &mut FieldAttributes)
 		  }
 		}
 	} else {
-		field.set_as_ref(false);
+		field.set_is_ref(false);
 		quote! {
 		  if !(#closure)(&#reference, #(#extra_args),*) {
 			  errors.push(ValidationError::builder()

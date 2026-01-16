@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
+	attributes::ValidationAttributes,
 	factories::{
 		boilerplates::{
 			commons::get_throw_errors_boilerplate, modifications::get_modification_with_context_factory_boilerplates,
@@ -33,7 +34,12 @@ impl<'a> ModificationWithContextFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for ModificationWithContextFactory<'a> {
-	fn create(&self, mut fields: Vec<FieldAttributes>, imports: &RefCell<ImportsSet>) -> Output {
+	fn create(
+		&self,
+		mut fields: Vec<FieldAttributes>,
+		attributes: &ValidationAttributes,
+		imports: &RefCell<ImportsSet>,
+	) -> Output {
 		imports.borrow_mut().add(Import::ValidationCore);
 		imports.borrow_mut().add(Import::AsyncTrait);
 
@@ -41,7 +47,8 @@ impl<'a> AbstractValidationFactory for ModificationWithContextFactory<'a> {
 		let context_type = self.context_type;
 
 		let mut code_factory = ModificationsCodeFactory(&mut fields);
-		let extensions = get_modification_with_context_extensions(self.struct_name, self.context_type, imports);
+		let extensions =
+			get_modification_with_context_extensions(self.struct_name, attributes, self.context_type, imports);
 
 		let operations = code_factory.operations();
 		let commit = code_factory.commit();

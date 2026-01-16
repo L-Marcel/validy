@@ -60,7 +60,11 @@ impl ArgParser for BeforeArgs {
 	}
 }
 
-pub fn create_before_now(input: ParseStream, field: &FieldAttributes, imports: &RefCell<ImportsSet>) -> TokenStream {
+pub fn create_before_now(
+	input: ParseStream,
+	field: &mut FieldAttributes,
+	imports: &RefCell<ImportsSet>,
+) -> TokenStream {
 	imports.borrow_mut().add(Import::ValidationFunction(
 		"time::validate_is_before_now as validate_is_before_now_fn",
 	));
@@ -80,9 +84,19 @@ pub fn create_before_now(input: ParseStream, field: &FieldAttributes, imports: &
 		Err(_) => BeforeArgs::default(),
 	};
 
-	quote! {
-		if let Err(e) = validate_is_before_now_fn(&#reference, #accept_equals, #field_name, #code, #message) {
-		  errors.push(e);
-	  }
+	if field.is_ref() {
+		field.set_is_ref(true);
+		quote! {
+			if let Err(e) = validate_is_before_now_fn(#reference, #accept_equals, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
+	} else {
+		field.set_is_ref(false);
+		quote! {
+			if let Err(e) = validate_is_before_now_fn(&#reference, #accept_equals, #field_name, #code, #message) {
+			  errors.push(e);
+		  }
+		}
 	}
 }

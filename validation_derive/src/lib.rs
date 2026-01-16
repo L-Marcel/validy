@@ -108,5 +108,5 @@ fn impl_validation_macro(ast: &DeriveInput) -> Output {
 
 	let factory = get_factory(&ast.ident, &attributes);
 	let fields_attributes = get_fields_attributes(fields, factory.as_ref(), &attributes, &imports);
-	factory.create(fields_attributes, &imports)
+	factory.create(fields_attributes, &attributes, &imports)
 }

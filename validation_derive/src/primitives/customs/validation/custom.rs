@@ -49,14 +49,14 @@ pub fn create_custom(input: ParseStream, field: &mut FieldAttributes) -> TokenSt
 	let extra_args = params.iter().flat_map(|p| &p.elems).map(|arg| quote! { #arg });
 
 	if field.is_ref() {
-		field.set_as_ref(true);
+		field.set_is_ref(true);
 		quote! {
 			if let Err(e) = #function(#reference, #field_name, #(#extra_args),*) {
 			  errors.push(e);
 			}
 		}
 	} else {
-		field.set_as_ref(false);
+		field.set_is_ref(false);
 		quote! {
 			if let Err(e) = #function(&#reference, #field_name, #(#extra_args),*) {
 			  errors.push(e);

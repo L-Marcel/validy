@@ -1,5 +1,5 @@
 use proc_macro_error::emit_error;
-use syn::{DeriveInput, Error, Ident, LitBool, Result, Type, parse::ParseStream};
+use syn::{DeriveInput, Error, Ident, LitBool, Result, Type, parse::ParseStream, spanned::Spanned};
 
 use crate::primitives::commons::{ArgParser, parse_attrs};
 
@@ -9,10 +9,11 @@ pub struct ValidationAttributes {
 	pub payload: bool,
 	pub asynchronous: bool,
 	pub context: Option<Type>,
+	pub axum: bool,
 }
 
 impl ArgParser for ValidationAttributes {
-	const POSITIONAL_KEYS: &'static [&'static str] = &["context", "modify", "payload", "asynchronous"];
+	const POSITIONAL_KEYS: &'static [&'static str] = &["context", "modify", "payload", "asynchronous", "axum"];
 
 	fn apply_value(&mut self, name: &str, input: ParseStream) -> Result<()> {
 		match name {
@@ -29,6 +30,10 @@ impl ArgParser for ValidationAttributes {
 				let bool_lit: LitBool = input.parse()?;
 				self.payload = bool_lit.value();
 			}
+			"axum" => {
+				let bool_lit: LitBool = input.parse()?;
+				self.axum = bool_lit.value();
+			}
 			_ => return Err(Error::new(input.span(), "unknown arg")),
 		}
 
@@ -42,6 +47,7 @@ impl ArgParser for ValidationAttributes {
 				"asynchronous" => self.asynchronous = true,
 				"modify" => self.modify = true,
 				"payload" => self.payload = true,
+				"axum" => self.axum = true,
 				_ => return Err(Error::new(input.span(), "unknown arg")),
 			}
 
@@ -68,6 +74,10 @@ pub fn get_attributes(input: &DeriveInput) -> ValidationAttributes {
 				Ok(())
 			});
 		}
+	}
+
+	if attributes.axum && !cfg!(feature = "axum") {
+		emit_error!(input.span(), "Needs to enable axum flag");
 	}
 
 	attributes

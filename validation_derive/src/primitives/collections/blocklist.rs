@@ -73,9 +73,9 @@ pub fn create_blocklist(input: ParseStream, field: &mut FieldAttributes, imports
 	}
 
 	if field.is_ref() {
-		field.set_as_ref(true);
+		field.set_is_ref(true);
 	} else {
-		field.set_as_ref(false);
+		field.set_is_ref(false);
 	};
 
 	match mode {

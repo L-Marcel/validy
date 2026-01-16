@@ -12,23 +12,23 @@ use crate::{
 	primitives::commons::{ArgParser, parse_attrs, remove_parens},
 };
 
-pub struct TimeArgs {
+pub struct ParseNaiveDateArgs {
 	pub format: Option<LitStr>,
 	pub code: LitStr,
 	pub message: LitStr,
 }
 
-impl Default for TimeArgs {
+impl Default for ParseNaiveDateArgs {
 	fn default() -> Self {
-		TimeArgs {
+		ParseNaiveDateArgs {
 			format: None,
-			code: LitStr::new("time", Span::call_site()),
-			message: LitStr::new("invalid time format", Span::call_site()),
+			code: LitStr::new("naive_date", Span::call_site()),
+			message: LitStr::new("invalid naive date format", Span::call_site()),
 		}
 	}
 }
 
-impl ArgParser for TimeArgs {
+impl ArgParser for ParseNaiveDateArgs {
 	const POSITIONAL_KEYS: &'static [&'static str] = &["format", "message", "code"];
 
 	fn apply_value(&mut self, name: &str, input: ParseStream) -> Result<()> {
@@ -43,20 +43,26 @@ impl ArgParser for TimeArgs {
 	}
 }
 
-pub fn create_time(input: ParseStream, field: &mut FieldAttributes, imports: &RefCell<ImportsSet>) -> TokenStream {
-	imports
-		.borrow_mut()
-		.add(Import::ValidationFunction("time::validate_time as validate_time_fn"));
+pub fn create_parse_naive_date(
+	input: ParseStream,
+	field: &mut FieldAttributes,
+	imports: &RefCell<ImportsSet>,
+) -> TokenStream {
+	imports.borrow_mut().add(Import::ModificationFunction(
+		"time::parse_naive_date as parse_naive_date_fn",
+	));
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();
+	field.increment_modifications();
+	let new_reference = field.get_reference();
 	let content = remove_parens(input);
 
-	let TimeArgs { format, code, message } = match content {
+	let ParseNaiveDateArgs { format, code, message } = match content {
 		Ok(content) => parse_attrs(&content)
 			.inspect_err(|erro| emit_error!(erro.span(), "{}", erro))
 			.unwrap_or_default(),
-		Err(_) => TimeArgs::default(),
+		Err(_) => ParseNaiveDateArgs::default(),
 	};
 
 	if format.is_none() {
@@ -65,17 +71,19 @@ pub fn create_time(input: ParseStream, field: &mut FieldAttributes, imports: &Re
 	}
 
 	if field.is_ref() {
-		field.set_is_ref(true);
+		field.set_is_ref(false);
 		quote! {
-			if let Err(e) = validate_time_fn(#reference, #format, #field_name, #code, #message) {
-			  errors.push(e);
+		  let (mut #new_reference, error) = parse_naive_date_fn(#reference, #format, #field_name, #code, #message);
+		  if let Some(error) = error {
+				errors.push(error);
 		  }
 		}
 	} else {
 		field.set_is_ref(false);
 		quote! {
-			if let Err(e) = validate_time_fn(&#reference, #format, #field_name, #code, #message) {
-			  errors.push(e);
+		  let (mut #new_reference, error) = parse_naive_date_fn(&#reference, #format, #field_name, #code, #message);
+		  if let Some(error) = error {
+			  errors.push(error);
 		  }
 		}
 	}

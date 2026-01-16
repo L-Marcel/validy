@@ -65,14 +65,14 @@ pub fn create_range(input: ParseStream, field: &mut FieldAttributes, imports: &R
 	}
 
 	if field.is_ref() {
-		field.set_as_ref(true);
+		field.set_is_ref(true);
 		quote! {
 			if let Err(e) = validate_range_fn(#reference, #range, #field_name, #code, #message) {
 			  errors.push(e);
 		  }
 		}
 	} else {
-		field.set_as_ref(false);
+		field.set_is_ref(false);
 		quote! {
 			if let Err(e) = validate_range_fn(&#reference, #range, #field_name, #code, #message) {
 			  errors.push(e);

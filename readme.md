@@ -18,6 +18,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [Custom rules](#custom-rules)
 - [🔨 Modification Rules](#-modification-rules)
   - [For `string` fields](#for-string-fields-1)
+  - [For `date` or `time` fields](#for-date-or-time-fields-1)
   - [Custom rules](#custom-rules-1)
 - [🔧 Special Rules](#-special-rules)
 
@@ -306,6 +307,16 @@ Primitive rules of `#[modify(<rule>, ...)]` rule group. All requires that `paylo
 | `kebab_case` | Converts the string to kebab-case. |
 | `shouty_kebab_case` | Converts the string to SHOUTY-KEBAB-CASE. |
 | `train_case` | Converts the string to Train-Case. |
+
+### For `date` or `time` fields
+
+All these rules was created to be used with the special rule `#[special(from_type(String))]` before.
+
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `parse_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses that the string matches the specified time/date format. |
+| `parse_naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses that the string matches the specified naive time format. |
+| `parse_naive_date`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses that the string matches the specified naive date format. |
 
 ### Custom rules
 

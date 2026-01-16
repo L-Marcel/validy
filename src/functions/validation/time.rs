@@ -67,8 +67,15 @@ pub fn validate_is_after_now<Tz: TimeZone>(
 	code: impl Into<Cow<'static, str>>,
 	message: impl Into<Cow<'static, str>>,
 ) -> Result<(), ValidationError> {
-	let now = &Utc::now().with_timezone(&target.timezone());
-	if (accept_equals && target < now) || (!accept_equals && target <= now) {
+	let now = Utc::now().with_timezone(&target.timezone());
+
+	let is_valid = if accept_equals {
+		target.timestamp() >= now.timestamp()
+	} else {
+		*target > now
+	};
+
+	if !is_valid {
 		return Err(ValidationError::builder()
 			.with_field(field)
 			.as_simple(code)
@@ -107,8 +114,15 @@ pub fn validate_is_before_now<Tz: TimeZone>(
 	code: impl Into<Cow<'static, str>>,
 	message: impl Into<Cow<'static, str>>,
 ) -> Result<(), ValidationError> {
-	let now = &Utc::now().with_timezone(&target.timezone());
-	if (accept_equals && target > now) || (!accept_equals && target >= now) {
+	let now = Utc::now().with_timezone(&target.timezone());
+
+	let is_valid = if accept_equals {
+		target.timestamp() <= now.timestamp()
+	} else {
+		*target < now
+	};
+
+	if !is_valid {
 		return Err(ValidationError::builder()
 			.with_field(field)
 			.as_simple(code)

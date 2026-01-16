@@ -2,6 +2,7 @@ use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
+	attributes::ValidationAttributes,
 	factories::{
 		boilerplates::{commons::get_throw_errors_boilerplate, defaults::get_async_default_factory_boilerplates},
 		core::AbstractValidationFactory,
@@ -27,14 +28,19 @@ impl<'a> AsyncValidationFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for AsyncValidationFactory<'a> {
-	fn create(&self, mut fields: Vec<FieldAttributes>, imports: &RefCell<ImportsSet>) -> Output {
+	fn create(
+		&self,
+		mut fields: Vec<FieldAttributes>,
+		attributes: &ValidationAttributes,
+		imports: &RefCell<ImportsSet>,
+	) -> Output {
 		imports.borrow_mut().add(Import::ValidationCore);
 		imports.borrow_mut().add(Import::AsyncTrait);
 
 		let struct_name = self.struct_name;
 
 		let mut code_factory = DefaultsCodeFactory(&mut fields);
-		let extensions = get_async_default_extensions(self.struct_name, imports);
+		let extensions = get_async_default_extensions(self.struct_name, attributes, imports);
 
 		let operations = code_factory.operations();
 		let imports = imports.borrow().build();
