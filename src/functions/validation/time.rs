@@ -2,6 +2,25 @@ use crate::core::ValidationError;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use std::borrow::Cow;
 
+pub fn validate_naive_date(
+	value: &str,
+	format: &str,
+	field: impl Into<Cow<'static, str>>,
+	code: impl Into<Cow<'static, str>>,
+	message: impl Into<Cow<'static, str>>,
+) -> Result<(), ValidationError> {
+	if NaiveDate::parse_from_str(value, format).is_err() {
+		return Err(ValidationError::builder()
+			.with_field(field)
+			.as_simple(code)
+			.with_message(message)
+			.build()
+			.into());
+	}
+
+	Ok(())
+}
+
 pub fn validate_naive_time(
 	value: &str,
 	format: &str,

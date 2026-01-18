@@ -41,9 +41,9 @@ use crate::{
 		specials::{for_each::create_for_each, from_type::create_from_type},
 		time::{
 			after_now::create_after_now, after_today::create_after_today, before_now::create_before_now,
-			before_today::create_before_today, default_time::create_time, naive_time::create_naive_time,
-			now::create_now, parse_naive_date::create_parse_naive_date, parse_naive_time::create_parse_naive_time,
-			parse_time::create_parse_time, today::create_today,
+			before_today::create_before_today, default_time::create_time, naive_date::create_naive_date,
+			naive_time::create_naive_time, now::create_now, parse_naive_date::create_parse_naive_date,
+			parse_naive_time::create_parse_naive_time, parse_time::create_parse_time, today::create_today,
 		},
 	},
 };
@@ -148,6 +148,7 @@ pub fn get_validation_by_attr_macro(
 		m if m.path.is_ident("before_today") => create_before_today(m.input, field, imports),
 		m if m.path.is_ident("after_today") => create_after_today(m.input, field, imports),
 		m if m.path.is_ident("today") => create_today(m.input, field, imports),
+		m if m.path.is_ident("naive_date") => create_naive_date(m.input, field, imports),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");
 			quote! {}

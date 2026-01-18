@@ -29,3 +29,4 @@ axum = ["dep:axum", "derive", "validation_derive/axum"]
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
+tokio = { version = "1.49.0", features = ["macros", "rt"] }

@@ -19,7 +19,17 @@ cargo expand --all-features --test mod validation::pattern >> temp/pattern.rs ||
 cargo expand --all-features --test mod validation::option >> temp/option.rs || true
 cargo expand --all-features --test mod validation::time >> temp/time.rs || true
 cargo expand --all-features --test mod validation::naive_time >> temp/naive_time.rs || true
+cargo expand --all-features --test mod validation::naive_date >> temp/naive_date.rs || true
 cargo expand --all-features --test mod validation::after_now >> temp/after_now.rs || true
 cargo expand --all-features --test mod validation::before_now >> temp/before_now.rs || true
+cargo expand --all-features --test mod validation::now >> temp/now.rs || true
+cargo expand --all-features --test mod validation::today >> temp/today.rs || true
+cargo expand --all-features --test mod validation::after_today >> temp/after_today.rs || true
+cargo expand --all-features --test mod validation::before_today >> temp/before_today.rs || true
+cargo expand --all-features --test mod validation::inline >> temp/inline.rs || true
+cargo expand --all-features --test mod validation::custom >> temp/custom.rs || true
+cargo expand --all-features --test mod validation::async_custom >> temp/async_custom.rs || true
+cargo expand --all-features --test mod validation::async_custom_with_context >> temp/async_custom_with_context.rs || true
+cargo expand --all-features --test mod validation::custom_with_context >> temp/custom_with_context.rs || true
 
 cargo check --all-features --test mod

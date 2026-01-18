@@ -3,6 +3,7 @@ pub mod after_today;
 pub mod before_now;
 pub mod before_today;
 pub mod default_time;
+pub mod naive_date;
 pub mod naive_time;
 pub mod now;
 pub mod parse_naive_date;

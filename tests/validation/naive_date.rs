@@ -6,33 +6,31 @@ use crate::{assert_errors, assert_validation};
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
 struct Test {
-	#[validate(time("%Y-%m-%d %H:%M:%S %z"))]
-	#[validate(time("%Y-%m-%d %H:%M:%S %z"))]
+	#[validate(naive_date("%Y-%m-%d"))]
+	#[validate(naive_date("%Y-%m-%d"))]
 	pub a: String,
-	#[validate(time("%Y-%m-%d %H:%M:%S %z", "custom message"))]
-	#[validate(time("%Y-%m-%d %H:%M:%S %z", "custom message"))]
+	#[validate(naive_date("%Y-%m-%d", "custom message"))]
+	#[validate(naive_date("%Y-%m-%d", "custom message"))]
 	pub b: Option<String>,
-	#[validate(time("%Y-%m-%d %H:%M:%S %z", code = "custom_code"))]
+	#[validate(naive_date("%Y-%m-%d", code = "custom_code"))]
 	pub c: Option<String>,
-	#[validate(time("%Y-%m-%d %H:%M:%S %z", "custom message", "custom_code"))]
+	#[validate(naive_date("%Y-%m-%d", "custom message", "custom_code"))]
 	pub d: Option<String>,
 }
 
 #[test]
-fn should_validate_times() {
+fn should_validate_naive_dates() {
 	let cases = [
-		("2024-02-29 10:00:00 -0300", true),
-		("1999-12-31 23:59:59 +0530", true),
-		("2023-01-01 00:00:00 -0000", true),
-		("2023-07-10 14:30:00", false),
-		("10-07-2023 14:30:00 +0000", false),
-		("2023-02-30 10:00:00 +0000", false),
-		("2023-07-10 25:00:00 +0000", false),
+		("2024-02-29", true),
+		("2026-02-29", false),
+		("1999-12-31", true),
+		("2023-01-01", true),
+		("10-07-2023", false),
+		("2023-02-30", false),
 		("random string", false),
 		("", false),
-		("2023-07-10", false),
-		("14:30:00 +0000", false),
-		("2023-07-10 14:30:00 +0000", true),
+		("14:30:00", false),
+		("2023-07-10", true),
 	];
 
 	let mut test = Test::default();
@@ -44,7 +42,7 @@ fn should_validate_times() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"a" => ("time", "invalid time format"),
+				"a" => ("naive_date", "invalid naive date format"),
 			});
 		}
 	}
@@ -57,7 +55,7 @@ fn should_validate_times() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"b" => ("time", "custom message"),
+				"b" => ("naive_date", "custom message"),
 			});
 		}
 	}
@@ -71,7 +69,7 @@ fn should_validate_times() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"c" => ("custom_code", "invalid time format"),
+				"c" => ("custom_code", "invalid naive date format"),
 			});
 		}
 	}

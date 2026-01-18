@@ -19,14 +19,14 @@ macro_rules! validation_errors {
 #[macro_export]
 macro_rules! validation_error {
 	($field:expr, $code:expr, $message:expr) => {
-		$crate::ValidationError::Leaf($crate::SimpleValidationError {
+		$crate::core::ValidationError::Leaf($crate::core::SimpleValidationError {
 			field: std::borrow::Cow::from($field),
 			code: std::borrow::Cow::from($code),
 			message: Some(std::borrow::Cow::from($message)),
 		})
 	};
 	($field:expr, $code:expr) => {
-		$crate::ValidationError::Leaf($crate::SimpleValidationError {
+		$crate::core::ValidationError::Leaf($crate::SimpleValidationError {
 			field: std::borrow::Cow::from($field),
 			code: std::borrow::Cow::from($code),
 			message: None,
@@ -37,7 +37,7 @@ macro_rules! validation_error {
 #[macro_export]
 macro_rules! nested_validation_error {
 	($field:expr, $code:expr, $errors:expr) => {
-		$crate::ValidationError::Node($crate::NestedValidationError {
+		$crate::core::ValidationError::Node($crate::NestedValidationError {
 			field: std::borrow::Cow::from($field),
 			code: std::borrow::Cow::from($code),
 			errors: $errors,

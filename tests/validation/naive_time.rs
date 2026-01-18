@@ -28,7 +28,7 @@ fn should_validate_naive_times() {
 		("10-07-2023 14:30:00", false),
 		("2023-02-30 10:00:00", false),
 		("2023-07-10 25:00:00", false),
-		("string aleatoria", false),
+		("random string", false),
 		("", false),
 		("2023-07-10", false),
 		("14:30:00", false),

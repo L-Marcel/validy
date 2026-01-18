@@ -268,6 +268,7 @@ Primitive rules of `#[validate(<rule>, ...)]` rule group.
 | :-------- | :------- |
 | `time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified `DateTime<FixedOffset>` format. Not parse the string. |
 | `naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified `NaiveDateTime` format. Not parse the string. |
+| `naive_date`(format = \<string>, message = <?string>, code = <?string>) | Validates that the string matches the specified `NaiveDate` format. Not parse the string. |
 | `after_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the `DateTime<FixedOffset>` is strictly after the current time. |
 | `before_now`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the `DateTime<FixedOffset>` is strictly before the current time. |
 | `now`(ms_tolerance = <?int>, message = <?string>, code = <?string>) | Validates that the `DateTime<FixedOffset>` matches the current time within a tolerance (default: 500ms). |
