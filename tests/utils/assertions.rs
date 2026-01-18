@@ -63,16 +63,6 @@ pub fn assert_parsed_validation<T: Debug + PartialEq, O: Debug>(
 	}
 }
 
-pub fn assert_modification<T: Debug + PartialEq>(result: &Result<(), ValidationErrors>, object: &T, expected: &T) {
-	match result {
-		Ok(_) => assert_eq!(object, expected, "Result did not match expectations for {:#?}.", object),
-		Err(value) => panic!(
-			"Expected Ok(()), received Err({:#?}) from {:#?} validation.",
-			value, object
-		),
-	}
-}
-
 pub fn assert_validation<T: Debug>(result: &Result<(), ValidationErrors>, object: &T) {
 	if let Err(error) = result {
 		panic!(
@@ -80,4 +70,8 @@ pub fn assert_validation<T: Debug>(result: &Result<(), ValidationErrors>, object
 			error, object
 		);
 	}
+}
+
+pub fn assert_modification<T: Debug + PartialEq, O: Debug>(result: &T, expected: &T, object: &O) {
+	assert_eq!(result, expected, "Result did not match expectations for {:#?}.", object)
 }
