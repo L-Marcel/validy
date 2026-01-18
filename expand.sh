@@ -47,5 +47,8 @@ cargo expand --all-features --test mod modifications::shouty_snake_case >> temp/
 cargo expand --all-features --test mod modifications::kebab_case >> temp/modifications/kebab_case.rs || true
 cargo expand --all-features --test mod modifications::shouty_kebab_case >> temp/modifications/shouty_kebab_case.rs || true
 cargo expand --all-features --test mod modifications::train_case >> temp/modifications/train_case.rs || true
+cargo expand --all-features --test mod modifications::parse_naive_date >> temp/modifications/parse_naive_date.rs || true
+cargo expand --all-features --test mod modifications::parse_naive_time >> temp/modifications/parse_naive_time.rs || true
+cargo expand --all-features --test mod modifications::parse_time >> temp/modifications/parse_time.rs || true
 
 cargo check --all-features --test mod

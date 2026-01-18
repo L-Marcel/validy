@@ -25,7 +25,7 @@ impl<'a> PayloadsCodeFactory<'a> {
 
 		#[rustfmt::skip]
 		let wrapper_struct = quote! {
-  		#[derive(Debug, ::serde::Deserialize)]
+  		#[derive(Debug, Default, ::serde::Deserialize)]
   		pub struct #wrapper_ident {
   		  #(#field_declarations)*
   		}
