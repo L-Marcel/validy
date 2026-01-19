@@ -25,7 +25,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [For `errors`](#for-errors)
   - [For `assertions`](#for-assertions)
 - [📁 More Examples](#-more-examples)
-
+- [🎁 For Developers](#-for-developers)
 
 ## 📝 Installation
 
@@ -436,3 +436,9 @@ assert_parsed!(result, wrapper, Test { a: *expected, b: None });
 ## 📁 More Examples
 
 If you need more references, you can use the [/tests](/tests) as an example.
+
+## 🎁 For Developers
+
+Well... You can run all tests with `cargo test-all` and see the `derive` macros's implementations running the script `expand.sh` (requires `cargo expand`). It will compile, generate and check all tests. I hope.
+
+> I'm a busy and currently not very successful graduate student, so don't expect too much from me in terms of maintenance. But I did my best.

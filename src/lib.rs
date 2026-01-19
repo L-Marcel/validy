@@ -1,4 +1,3 @@
-pub mod axum;
 pub mod builders;
 pub mod core;
 pub mod functions;
