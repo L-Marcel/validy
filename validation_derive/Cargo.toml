@@ -1,7 +1,13 @@
 [package]
 name = "validation_derive"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
+description = "Secundary Crate for macros."
+license = "MIT"
+repository = "https://github.com/L-Marcel/validation-rust"
+keywords = ["validation", "axum", "derive", "input-validation", "macros"]
+categories = ["web-programming", "data-structures", "parsing"]
+exclude = [".github/", ".gitignore", "expand.sh", "tests/"]
 
 [lib]
 proc-macro = true
