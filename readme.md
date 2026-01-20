@@ -10,6 +10,8 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [🚀 Quick Start](#-quick-start)
 - [🔎 Validation Flow](#-validation-flow)
 - [🔌 Axum Integration](#-axum-integration)
+- [🧩 Manual Usage](#-manual-usage)
+  - [Available Traits](#available-traits)
 - [🚩 Feature Flags](#-feature-flags)
 - [🚧 Validation Rules](#-validation-rules)
   - [For `required` fields](#for-required-fields)
@@ -230,6 +232,27 @@ pub async fn create_user(
 ```
 
 Yes, it's beautiful.
+
+
+## 🧩 Manual Usage
+
+The derive macros implement specific traits for your structs. To call methods like `.validate()`, `.async_validate()`, or `::validate_and_parse(...)`, you must import the corresponding traits into your scope.
+
+```rust
+use validation::core::{Validate, AsyncValidate, ValidateAndParse};
+
+// Or just import the prelude
+use validation::core::*;
+```
+
+### Available Traits
+
+| **Category** | **Traits** |
+| :-------- | :------- |
+| Validation | `Validate`, `AsyncValidate`, `ValidateWithContext<C>`, `SpecificValidateWithContext`, `AsyncValidateWithContext<C>` and  `SpecificAsyncValidateWithContext`. |
+| Modification | `ValidateAndModificate`, `AsyncValidateAndModificate`, `ValidateAndModificateWithContext<C>`, `SpecificValidateAndModificateWithContext`, `AsyncValidateAndModificateWithContext<C>` and `SpecificAsyncValidateAndModificateWithContext`. |
+| Parsing | `ValidateAndParse<W>`, `SpecificValidateAndParse`, `AsyncValidateAndParse<W>`, `SpecificAsyncValidateAndParse`, `ValidateAndParseWithContext<W, C>`, `SpecificValidateAndParseWithContext`, `AsyncValidateAndParseWithContext<W, C>` and  `SpecificAsyncValidateAndParseWithContext`. |
+| Error | `IntoValidationError` |
 
 ## 🚩 Feature Flags
 
