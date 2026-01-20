@@ -1,4 +1,4 @@
-# Validation
+# Validy
 
 *But, also modification.*
 
@@ -36,7 +36,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 Add with Cargo:
 
 ```
-cargo add validy --features axum, email
+cargo add validy --features axum,email
 ```
 
 Or add this to your Cargo.toml:
