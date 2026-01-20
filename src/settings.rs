@@ -3,7 +3,9 @@ use std::{
 	sync::{Arc, OnceLock},
 };
 
+#[cfg(feature = "pattern")]
 use moka::sync::Cache;
+#[cfg(feature = "pattern")]
 use regex::Regex;
 
 pub struct ValidationSettings {
