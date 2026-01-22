@@ -9,6 +9,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [📝 Installation](#-installation)
 - [🚀 Quick Start](#-quick-start)
 - [🔎 Validation Flow](#-validation-flow)
+- [🎯 Work In Progress](#-work-in-progress)
 - [🔌 Axum Integration](#-axum-integration)
 - [🧩 Manual Usage](#-manual-usage)
   - [Available traits](#available-traits)
@@ -185,6 +186,10 @@ Almost all `rules` are executed in order from left to right and from top to bott
 There is a cost to commit changes after all the `rules` have been met. When the `modify` or `payload` configuration attributes are enabled, a new copy of the changed value will be created after each modification.
 
 In contrast, no primitive `rule` is asynchronous, therefore the `asynchronous` configuration attribute is only necessary to enable custom `rules`. The use of `context` is similar.
+
+## 🎯 Work In Progress
+
+- [] Typed multipart/form-data validation support.
 
 ## 🔌 Axum Integration
 
