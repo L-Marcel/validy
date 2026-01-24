@@ -61,5 +61,12 @@ cargo expand --all-features --test mod axum::mocks >> temp/axum/mocks.rs || true
 cargo expand --all-features --test mod axum::payload >> temp/axum/payload.rs || true
 cargo expand --all-features --test mod axum::asynchronous_payload >> temp/axum/asynchronous_payload.rs || true
 cargo expand --all-features --test mod axum::asynchronous_payload_with_context >> temp/axum/asynchronous_payload_with_context.rs || true
+cargo expand --all-features --test mod axum::payload >> temp/axum/payload.rs || true
+cargo expand --all-features --test mod axum::payload_with_context >> temp/axum/payload_with_context.rs || true
+cargo expand --all-features --test mod axum::asynchronous_modify >> temp/axum/asynchronous_modify.rs || true
+cargo expand --all-features --test mod axum::asynchronous_modify_with_context >> temp/axum/asynchronous_modify_with_context.rs || true
+cargo expand --all-features --test mod axum::modify >> temp/axum/modify.rs || true
+cargo expand --all-features --test mod axum::modify_with_context >> temp/axum/modify_with_context.rs || true
+
 
 cargo check --all-features --test mod
