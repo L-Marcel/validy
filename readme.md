@@ -9,6 +9,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [📝 Installation](#-installation)
 - [🚀 Quick Start](#-quick-start)
 - [🔎 Validation Flow](#-validation-flow)
+  - [Implementations](#implementations)
 - [🎯 Work In Progress](#-work-in-progress)
 - [🔌 Axum Integration](#-axum-integration)
 - [🧩 Manual Usage](#-manual-usage)
@@ -38,13 +39,6 @@ Add with Cargo:
 
 ```
 cargo add validy --features axum,email
-```
-
-Or add this to your Cargo.toml:
-
-```toml
-[dependencies]
-validy = { version = "1.0.0", features = ["axum", "email"] }
 ```
 
 ## 🚀 Quick Start
@@ -107,9 +101,10 @@ pub struct CreateUserExampleDTO {
 
 // To pass a struct to nested validations, the struct needs `Default` derive.
 #[derive(Debug, Deserialize, Default, Validate)]
-#[validate(payload)]
+#[validate(payload, axum)]
 pub struct Role {
 	#[special(from_type(Vec<String>))]
+	#[validate(length(1..=2))]
 	#[special(for_each( // You can validate or modify each item of collections.
  	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
     modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))), // Just another parse example.
@@ -117,6 +112,15 @@ pub struct Role {
  	  modify(inline(|x| x + 1))
 	))]
 	pub permissions: Vec<u32>,
+	
+	#[special(from_type(Vec<String>))]
+	#[special(for_each(
+	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
+		modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+	  validate(inline(|x: &u32| *x > 1)),
+		modify(inline(|x| x + 1))
+	))]
+	pub alt_permissions: Vec<u32>,
 }
 
 // As a rule, the input is `(&field, &field_name)`.
@@ -141,14 +145,14 @@ async fn validate_unique_email(
 	match result {
 		Ok(false) => Ok(()),
 		Ok(true) => Err(ValidationError::builder()
-			.with_field("email")
+			.with_field(field_name.to_string())
 			.as_simple("unique")
 			.with_message("e-mail must be unique")
 			.build()
 			.into()),
 		Err(error) => {
 			Err(ValidationError::builder()
-				.with_field("email")
+				.with_field(field_name.to_string())
 				.as_simple("internal")
 				.with_message("internal error")
 				.build()
@@ -183,14 +187,19 @@ pub struct CreateUserExampleDTO {
 
 Almost all `rules` are executed in order from left to right and from top to bottom, according to their role group and definitions.
 
-There is a cost to commit changes after all the `rules` have been met. When the `modify` or `payload` configuration attributes are enabled, a new copy of the changed value will be created after each modification.
+### Implementations
+
+There is a cost to commit changes after all the `rules` have been met. When the `modify` or `payload` configuration attributes are enabled, a clone of the changed value will be created after each modification. Some validation rules need to clone the values too.
 
 In contrast, no primitive `rule` is asynchronous, therefore the `asynchronous` configuration attribute is only necessary to enable custom `rules`. The use of `context` is similar.
 
 ## 🎯 Work In Progress
 
+Some of these features are available now, but are just partially finished. So I will document only after finished then.
+
 - [] More test coverage.
 - [] Failure mode.
+  - Now the default is `FailOncePerField` (covered by the tests).
 - [] Typed multipart/form-data validation support.
   - [] file validation rules too (maybe).
 - [] Validation rules for uuid.
