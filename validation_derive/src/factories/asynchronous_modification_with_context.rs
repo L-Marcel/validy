@@ -101,14 +101,22 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 
 		field.set_is_ref(false);
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  let mut #new_reference = #reference.clone();
-		  if let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(&mut #new_reference, context).await {
-				errors.push(ValidationError::Node(NestedValidationError::from(
+		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(&mut #new_reference, context).await {
+				let error = NestedValidationError::from(
 					e,
 					#field_name,
-				)));
+				);
+
+			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	}
 }

@@ -10,7 +10,7 @@ struct Test {
 	#[validate(inline(|x: &bool, b: &Option<bool>| b.is_some_and(|c| c) || *x, [&self.b]))]
 	pub a: bool,
 	#[validate(inline(|x| x, [], "custom message"))]
-	#[validate(inline(|x: &bool, a: &bool| *a && *x, [&self.a]), "custom message")]
+	#[validate(inline(|x: &bool, a: &bool| *a && *x, [&self.a], "custom message"))]
 	pub b: Option<bool>,
 	#[validate(inline(|x| x, [], code = "custom_code"))]
 	pub c: Option<bool>,
@@ -36,7 +36,7 @@ fn should_validate_inlines() {
 		} else {
 			assert_errors!(result, test, {
 				"a" => ("inline", "invalid"),
-				"b" => ("inline", "invalid"),
+				"b" => ("inline", "custom message"),
 			});
 		}
 	}
@@ -49,7 +49,7 @@ fn should_validate_inlines() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"b" => ("inline", "invalid"),
+				"b" => ("inline", "custom message"),
 			});
 		}
 	}

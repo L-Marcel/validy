@@ -101,24 +101,40 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 
 		if field.is_ref() {
 			field.set_is_ref(true);
-			quote! {
+			#[rustfmt::skip]
+			let result = quote! {
 			  if let Err(e) = <#field_type as ValidateWithContext<#context_type>>::validate_with_context(#reference, &context) {
-					errors.push(ValidationError::Node(NestedValidationError::from(
+					let error = NestedValidationError::from(
 						e,
 						#field_name,
-					)));
+					);
+
+				  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
 				}
-			}
+			};
+
+			result
 		} else {
 			field.set_is_ref(false);
-			quote! {
-			  if let Err(e) = <#field_type as ValidateWithContext<#context_type>>::validate_with_context(&#reference, &context) {
-					errors.push(ValidationError::Node(NestedValidationError::from(
+			#[rustfmt::skip]
+			let result = quote! {
+			  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateWithContext<#context_type>>::validate_with_context(&#reference, &context) {
+					let error = NestedValidationError::from(
 						e,
 						#field_name,
-					)));
+					);
+
+				  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
 				}
-			}
+			};
+
+			result
 		}
 	}
 }

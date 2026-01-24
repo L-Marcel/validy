@@ -91,14 +91,22 @@ impl<'a> AbstractValidationFactory for ModificationFactory<'a> {
 
 		field.set_is_ref(false);
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  let mut #new_reference = #reference.clone();
-		  if let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(&mut #new_reference) {
-				errors.push(ValidationError::Node(NestedValidationError::from(
+		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(&mut #new_reference) {
+				let error = NestedValidationError::from(
 					e,
 					#field_name,
-				)));
+				);
+
+			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	}
 }

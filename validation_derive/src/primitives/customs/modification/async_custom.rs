@@ -67,7 +67,7 @@ pub fn create_async_custom_modification(
 			let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
 			  #function(#reference, #field_name, #(#extra_args),*).await
 			} else {
-			  (#reference.clone(), None)
+			  (Default::default(), None)
 			};
 
 			if let Some(e) = error {
@@ -86,7 +86,7 @@ pub fn create_async_custom_modification(
 		  let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
 				#function(&#reference, #field_name, #(#extra_args),*).await
 		  } else {
-				(#reference, None)
+				(Default::default(), None)
 		  };
 
 		  if let Some(e) = error {

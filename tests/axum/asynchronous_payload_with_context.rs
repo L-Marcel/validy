@@ -66,10 +66,10 @@ pub struct RoleDTO {
 
 	#[special(from_type(Vec<String>))]
 	#[special(for_each(
-		 config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-	   modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
-	   validate(inline(|x: &u32| *x > 1)),
-		 modify(inline(|x| x + 1))
+	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
+		modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+	  validate(inline(|x: &u32| *x > 1)),
+		modify(inline(|x| x + 1))
 	))]
 	pub alt_permissions: Vec<u32>,
 }
@@ -173,14 +173,14 @@ async fn should_validate_requests() {
 				"dependent_id": "5"
 			}),
 			json!({
-				"email": {
+				"email": [{
 					"code": "unique",
 					"message": "e-mail must be unique"
-				},
-				"password": {
+				}],
+				"password": [{
 					"code": "size",
 					"message": "password must be between 3 and 12 characters"
-				}
+				}]
 			}),
 		),
 		(
@@ -192,20 +192,20 @@ async fn should_validate_requests() {
 				"password": "secure",
 				"dependent_id": "5",
 				"role": {
-					"permissions": ["0"],
+					"permissions": [],
 					"alt_permissions": ["2"]
 				}
 			}),
 			json!({
-				"role": {
+				"role": [{
 					"code": "nested",
 					"errors": {
-						"permissions": {
-							"code": "inline",
-							"message": "invalid"
-						}
+					  "permissions": [{
+						  "code": "length",
+						  "message": "length out of range"
+					  }]
 					}
-				}
+				}]
 			}),
 		),
 		(
@@ -217,7 +217,7 @@ async fn should_validate_requests() {
 			}),
 			json!({
 				"permissions": [3, 11],
-				"alt_permissions": [2]
+				"alt_permissions": [3]
 			}),
 		),
 		(
@@ -228,10 +228,10 @@ async fn should_validate_requests() {
 				"alt_permissions": ["2"]
 			}),
 			json!({
-			  "permissions": {
+			  "permissions": [{
 				  "code": "inline",
 				  "message": "invalid"
-			  }
+			  }]
 			}),
 		),
 	];

@@ -47,16 +47,31 @@ pub fn create_inline_modification(input: ParseStream, field: &mut FieldAttribute
 	}
 
 	let extra_args = params.iter().flat_map(|p| &p.elems).map(|arg| quote! { #arg });
+	let field_name = field.get_name();
 
 	if field.is_ref() {
 		field.set_is_ref(false);
-		quote! {
-			let mut #new_reference = (#closure)(#reference, #(#extra_args),*);
-		}
+		#[rustfmt::skip]
+		let result = quote! {
+			let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
+			  (#closure)(#reference, #(#extra_args),*)
+      } else {
+        Default::default()
+      };
+		};
+
+		result
 	} else {
 		field.set_is_ref(false);
-		quote! {
-			let mut #new_reference = (#closure)(&#reference, #(#extra_args),*);
-		}
+		#[rustfmt::skip]
+		let result = quote! {
+      let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
+        (#closure)(&#reference, #(#extra_args),*)
+      } else {
+        Default::default()
+      };
+		};
+
+		result
 	}
 }

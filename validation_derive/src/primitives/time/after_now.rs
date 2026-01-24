@@ -82,17 +82,29 @@ pub fn create_after_now(input: ParseStream, field: &mut FieldAttributes, imports
 
 	if field.is_ref() {
 		field.set_is_ref(true);
-		quote! {
-			if let Err(e) = validate_is_after_now_fn(#reference, #accept_equals, #field_name, #code, #message) {
-			  errors.push(e);
+		#[rustfmt::skip]
+		let result = quote! {
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_is_after_now_fn(#reference, #accept_equals, #field_name, #code, #message) {
+        append_error(&mut errors, e, failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	} else {
 		field.set_is_ref(false);
-		quote! {
-			if let Err(e) = validate_is_after_now_fn(&#reference, #accept_equals, #field_name, #code, #message) {
-			  errors.push(e);
+		#[rustfmt::skip]
+		let result = quote! {
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_is_after_now_fn(&#reference, #accept_equals, #field_name, #code, #message) {
+        append_error(&mut errors, e, failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	}
 }

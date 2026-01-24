@@ -68,27 +68,41 @@ pub fn create_inline_validation(input: ParseStream, field: &mut FieldAttributes)
 
 	if field.is_ref() {
 		field.set_is_ref(true);
-		quote! {
-		  if !(#closure)(#reference, #(#extra_args),*) {
-			  errors.push(ValidationError::builder()
-				  .with_field(#field_name)
-				  .as_simple(#code)
-				  .with_message(#message)
-				  .build()
-				  .into());
+		#[rustfmt::skip]
+		let result = quote! {
+		  if can_continue(&errors, failure_mode, #field_name) && !(#closure)(#reference, #(#extra_args),*) {
+				let error = ValidationError::builder()
+  			  .with_field(#field_name)
+  			  .as_simple(#code)
+  			  .with_message(#message)
+  			  .build();
+
+        append_error(&mut errors, error.into(), failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	} else {
 		field.set_is_ref(false);
-		quote! {
-		  if !(#closure)(&#reference, #(#extra_args),*) {
-			  errors.push(ValidationError::builder()
-				  .with_field(#field_name)
-				  .as_simple(#code)
-				  .with_message(#message)
-				  .build()
-				  .into());
+		#[rustfmt::skip]
+		let result = quote! {
+		  if can_continue(&errors, failure_mode, #field_name) && !(#closure)(&#reference, #(#extra_args),*) {
+				let error = ValidationError::builder()
+  			  .with_field(#field_name)
+  			  .as_simple(#code)
+  			  .with_message(#message)
+  			  .build();
+
+        append_error(&mut errors, error.into(), failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 		  }
-		}
+		};
+
+		result
 	}
 }

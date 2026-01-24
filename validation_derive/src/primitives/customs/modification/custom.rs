@@ -57,7 +57,7 @@ pub fn create_custom_modification(input: ParseStream, field: &mut FieldAttribute
 		  let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
     		#function(#reference, #field_name, #(#extra_args),*)
       } else {
-    		(#reference.clone(), None)
+    		(Default::default(), None)
       };
 
   	  if let Some(e) = error {
@@ -76,7 +76,7 @@ pub fn create_custom_modification(input: ParseStream, field: &mut FieldAttribute
       let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
     		#function(&#reference, #field_name, #(#extra_args),*)
       } else {
-    		(#reference, None)
+    		(Default::default(), None)
       };
 
 			if let Some(e) = error {

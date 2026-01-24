@@ -50,17 +50,29 @@ pub fn create_custom(input: ParseStream, field: &mut FieldAttributes) -> TokenSt
 
 	if field.is_ref() {
 		field.set_is_ref(true);
-		quote! {
-			if let Err(e) = #function(#reference, #field_name, #(#extra_args),*) {
-			  errors.push(e);
+		#[rustfmt::skip]
+		let result = quote! {
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = #function(#reference, #field_name, #(#extra_args),*) {
+        append_error(&mut errors, e, failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 			}
-		}
+		};
+
+		result
 	} else {
 		field.set_is_ref(false);
-		quote! {
-			if let Err(e) = #function(&#reference, #field_name, #(#extra_args),*) {
-			  errors.push(e);
+		#[rustfmt::skip]
+		let result = quote! {
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = #function(&#reference, #field_name, #(#extra_args),*) {
+        append_error(&mut errors, e, failure_mode, #field_name);
+        if should_fail_fast(&errors, failure_mode, #field_name) {
+     			return Err(errors);
+     	  }
 			}
-		}
+		};
+
+		result
 	}
 }

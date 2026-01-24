@@ -84,6 +84,16 @@ pub fn create_for_each(
 	let current_type = field.get_current_type().clone();
 	args.update_from_type(&current_type, field);
 
+	if attributes.modify {
+		field.increment_modifications();
+		let new_reference = field.get_reference();
+		field.set_is_ref(false);
+
+		operations.push(quote! {
+		  let mut #new_reference = #item_reference.clone();
+		});
+	};
+
 	let _ = meta.parse_nested_meta(|meta| {
 		if meta.path.is_ident("config") {
 			let content = remove_parens(meta.input);
@@ -133,7 +143,8 @@ pub fn create_for_each(
 			quote! { ::std::mem::take(&#reference) }
 		};
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  let mut #new_reference: #to_collection = Default::default();
 		  for #item_reference in #iterator_source.into_iter() {
 				#(#operations)*
@@ -143,12 +154,15 @@ pub fn create_for_each(
 					::std::iter::once(#final_item_reference.clone())
 				);
 		  }
-		}
+		};
+
+		result
 	} else if attributes.payload {
 		let new_reference = field.get_reference();
 		let to_collection = args.to_collection;
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  let mut #new_reference: #to_collection = Default::default();
 		  for #item_reference in #reference.into_iter() {
 				#(#operations)*
@@ -158,7 +172,9 @@ pub fn create_for_each(
 					::std::iter::once(#final_item_reference.clone())
 				);
 		  }
-		}
+		};
+
+		result
 	} else {
 		let iterator_source = if is_ref {
 			quote! { #reference }
@@ -166,10 +182,13 @@ pub fn create_for_each(
 			quote! { &#reference }
 		};
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 			for ref #item_reference in #iterator_source {
 				#(#operations)*
 		  }
-		}
+		};
+
+		result
 	}
 }

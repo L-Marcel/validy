@@ -69,9 +69,15 @@ pub fn create_length(input: ParseStream, field: &mut FieldAttributes, imports: &
 		field.set_is_ref(false);
 	};
 
-	quote! {
-		if let Err(e) = validate_length_fn(&#reference.len(), #range, #field_name, #code, #message) {
-		  errors.push(e);
+	#[rustfmt::skip]
+	let result = quote! {
+		if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_length_fn(&#reference.len(), #range, #field_name, #code, #message) {
+      append_error(&mut errors, e, failure_mode, #field_name);
+      if should_fail_fast(&errors, failure_mode, #field_name) {
+   			return Err(errors);
+   	  }
 	  }
-	}
+	};
+
+	result
 }

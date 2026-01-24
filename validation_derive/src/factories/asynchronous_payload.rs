@@ -106,18 +106,32 @@ impl<'a> AbstractValidationFactory for AsyncPayloadFactory<'a> {
 
 		field.set_is_ref(false);
 
-		quote! {
+		#[rustfmt::skip]
+		let result = quote! {
 		  let mut #new_reference = #field_type::default();
-			let result = <#field_type as AsyncValidateAndParse<#wrapper_type>>::async_validate_and_parse(#reference.clone()).await;
+
+			let result = if can_continue(&errors, failure_mode, #field_name) {
+	      <#field_type as AsyncValidateAndParse<#wrapper_type>>::async_validate_and_parse(#reference.clone()).await
+			} else {
+			  Ok(#field_type::default())
+			};
+
 			match result {
 			  Ok(value) => #new_reference = value,
 				Err(e) =>  {
-					errors.push(ValidationError::Node(NestedValidationError::from(
-						e,
-						#field_name,
-					)));
+  				let error = NestedValidationError::from(
+  					e,
+  					#field_name,
+  				);
+
+			    append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
 			  },
 			}
-		}
+		};
+
+		result
 	}
 }

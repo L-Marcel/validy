@@ -84,6 +84,7 @@ pub fn get_fields_attributes(
 			let reference = field_attributes.get_reference();
 			field_attributes.increment_modifications();
 			let new_reference = field_attributes.get_reference();
+			field_attributes.set_is_ref(false);
 
 			field_attributes.add_operation(quote! {
 			  let mut #new_reference = #reference.clone();
@@ -91,28 +92,31 @@ pub fn get_fields_attributes(
 		};
 
 		for attr in &field.attrs {
-			if attr.path().is_ident("validate") {
-				let _ = attr.parse_nested_meta(|meta| {
+			if attr.path().is_ident("validate")
+				&& let Err(err) = attr.parse_nested_meta(|meta| {
 					let validation =
 						get_validation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(validation.clone());
 					Ok(())
-				});
-			} else if attr.path().is_ident("modify") {
-				let _ = attr.parse_nested_meta(|meta| {
+				}) {
+				emit_error!(err.span(), "unknown rule");
+			} else if attr.path().is_ident("modify")
+				&& let Err(err) = attr.parse_nested_meta(|meta| {
 					let operation =
 						get_operation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(operation.clone());
 					Ok(())
-				});
-			} else if attr.path().is_ident("special") {
-				let _ = attr.parse_nested_meta(|meta| {
+				}) {
+				emit_error!(err.span(), "unknown rule");
+			} else if attr.path().is_ident("special")
+				&& let Err(err) = attr.parse_nested_meta(|meta| {
 					let operation =
 						get_special_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(operation.clone());
 					Ok(())
-				});
-			}
+				}) {
+				emit_error!(err.span(), "unknown rule");
+			};
 		}
 
 		fields_attributes.push(field_attributes);
