@@ -25,7 +25,7 @@ pub fn get_async_default_axum_extension(struct_name: &Ident) -> TokenStream {
 
       		match object.async_validate().await {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((ValidationSettings::get_failure_status_code(), Json(errors)).into_response()),
       		}
        	}
       }
@@ -61,7 +61,7 @@ pub fn get_async_default_with_context_axum_extension(struct_name: &Ident) -> Tok
 
       		match object.specific_async_validate_with_context(&context).await {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
+       			Err(errors) => Err((ValidationSettings::get_failure_status_code(), Json(errors)).into_response()),
       		}
        	}
       }
@@ -101,7 +101,7 @@ pub fn get_async_default_axum_multipart_extension(struct_name: &Ident) -> TokenS
 
       		match object.async_validate().await {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((ValidationSettings::get_failure_multipart_status_code(), Json(errors)).into_response()),
       		}
        	}
       }
@@ -143,7 +143,7 @@ pub fn get_async_default_with_context_axum_multipart_extension(struct_name: &Ide
 
        		match object.specific_async_validate_with_context(&context).await {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
+       			Err(errors) => Err((ValidationSettings::get_failure_multipart_status_code(), Json(errors)).into_response()),
        		}
         }
       }

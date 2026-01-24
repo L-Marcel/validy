@@ -29,7 +29,7 @@ pub fn get_async_payload_axum_extension(struct_name: &Ident) -> TokenStream {
 
  					match #struct_name::specific_async_validate_and_parse(&wrapper).await {
 						Ok(object) => Ok(object),
-						Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+						Err(errors) => Err((ValidationSettings::get_failure_status_code(), Json(errors)).into_response()),
  					}
 				}
  	    }
@@ -68,7 +68,7 @@ pub fn get_async_payload_with_context_axum_extension(struct_name: &Ident) -> Tok
 
   				match #struct_name::specific_async_validate_and_parse_with_context(&wrapper, &context).await {
    					Ok(object) => Ok(object),
-   					Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+   					Err(errors) => Err((ValidationSettings::get_failure_status_code(), Json(errors)).into_response()),
   				}
  			  }
       }
@@ -110,7 +110,7 @@ pub fn get_async_payload_axum_multipart_extension(struct_name: &Ident) -> TokenS
 
  					match #struct_name::specific_async_validate_and_parse(&wrapper).await {
 						Ok(object) => Ok(object),
-						Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+						Err(errors) => Err((ValidationSettings::get_failure_multipart_status_code(), Json(errors)).into_response()),
  					}
 				}
  	    }
@@ -155,7 +155,7 @@ pub fn get_async_payload_with_context_axum_multipart_extension(struct_name: &Ide
 
       		match #struct_name::specific_async_validate_and_parse_with_context(&wrapper, &context).await {
       		  Ok(object) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((ValidationSettings::get_failure_multipart_status_code(), Json(errors)).into_response()),
       		}
      	  }
       }

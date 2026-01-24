@@ -105,24 +105,27 @@ pub fn create_for_each(
 			};
 
 			args.update_from_item_type(field);
-		} else if meta.path.is_ident("validate") {
-			let _ = meta.parse_nested_meta(|meta| {
+		} else if meta.path.is_ident("validate")
+			&& let Err(error) = meta.parse_nested_meta(|meta| {
 				let validation = get_validation_by_attr_macro(factory, meta, field, attributes, imports);
 				operations.push(validation.clone());
 				Ok(())
-			});
-		} else if meta.path.is_ident("modify") {
-			let _ = meta.parse_nested_meta(|meta| {
+			}) {
+			emit_error!(error.span(), error.to_string());
+		} else if meta.path.is_ident("modify")
+			&& let Err(error) = meta.parse_nested_meta(|meta| {
 				let operation = get_operation_by_attr_macro(factory, meta, field, attributes, imports);
 				operations.push(operation.clone());
 				Ok(())
-			});
-		} else if meta.path.is_ident("special") {
-			let _ = meta.parse_nested_meta(|meta| {
+			}) {
+			emit_error!(error.span(), error.to_string());
+		} else if meta.path.is_ident("special")
+			&& let Err(error) = meta.parse_nested_meta(|meta| {
 				let operation = get_special_by_attr_macro(factory, meta, field, attributes, imports);
 				operations.push(operation.clone());
 				Ok(())
-			});
+			}) {
+			emit_error!(error.span(), error.to_string());
 		}
 		Ok(())
 	});
@@ -140,7 +143,7 @@ pub fn create_for_each(
 		let iterator_source = if is_ref {
 			quote! { ::std::mem::take(#reference) }
 		} else {
-			quote! { ::std::mem::take(&#reference) }
+			quote! { ::std::mem::take(&mut #reference) }
 		};
 
 		#[rustfmt::skip]

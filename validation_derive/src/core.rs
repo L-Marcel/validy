@@ -93,29 +93,29 @@ pub fn get_fields_attributes(
 
 		for attr in &field.attrs {
 			if attr.path().is_ident("validate")
-				&& let Err(err) = attr.parse_nested_meta(|meta| {
+				&& let Err(error) = attr.parse_nested_meta(|meta| {
 					let validation =
 						get_validation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(validation.clone());
 					Ok(())
 				}) {
-				emit_error!(err.span(), "unknown rule");
+				emit_error!(error.span(), error.to_string());
 			} else if attr.path().is_ident("modify")
-				&& let Err(err) = attr.parse_nested_meta(|meta| {
+				&& let Err(error) = attr.parse_nested_meta(|meta| {
 					let operation =
 						get_operation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(operation.clone());
 					Ok(())
 				}) {
-				emit_error!(err.span(), "unknown rule");
+				emit_error!(error.span(), error.to_string());
 			} else if attr.path().is_ident("special")
-				&& let Err(err) = attr.parse_nested_meta(|meta| {
+				&& let Err(error) = attr.parse_nested_meta(|meta| {
 					let operation =
 						get_special_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(operation.clone());
 					Ok(())
 				}) {
-				emit_error!(err.span(), "unknown rule");
+				emit_error!(error.span(), error.to_string());
 			};
 		}
 

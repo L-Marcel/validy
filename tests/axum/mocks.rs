@@ -5,12 +5,16 @@ use std::sync::Arc;
 #[async_trait]
 pub trait MockedService: Send + Sync {
 	async fn email_exists(&self, email: &str) -> bool;
+	fn sync_email_exists(&self, email: &str) -> bool;
 }
 
 pub struct ImplMockedService {}
 #[async_trait]
 impl MockedService for ImplMockedService {
 	async fn email_exists(&self, email: &str) -> bool {
+		email == "test@gmail.com"
+	}
+	fn sync_email_exists(&self, email: &str) -> bool {
 		email == "test@gmail.com"
 	}
 }

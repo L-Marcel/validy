@@ -1,3 +1,5 @@
+#[cfg(feature = "axum")]
+use axum::http::StatusCode;
 use parking_lot::RwLock;
 use std::sync::OnceLock;
 #[cfg(feature = "pattern")]
@@ -17,6 +19,10 @@ pub enum FailureMode {
 }
 
 pub struct ValidationSettings {
+	#[cfg(feature = "axum")]
+	pub failure_status_code: RwLock<StatusCode>,
+	#[cfg(feature = "axum")]
+	pub failure_multipart_status_code: RwLock<StatusCode>,
 	pub failure_mode: RwLock<FailureMode>,
 	#[cfg(feature = "pattern")]
 	pub regex_cache: RwLock<Cache<Cow<'static, str>, Arc<Regex>>>,
@@ -26,6 +32,10 @@ impl Default for ValidationSettings {
 	fn default() -> Self {
 		Self {
 			failure_mode: RwLock::new(FailureMode::FailOncePerField),
+			#[cfg(feature = "axum")]
+			failure_status_code: RwLock::new(StatusCode::BAD_REQUEST),
+			#[cfg(feature = "axum")]
+			failure_multipart_status_code: RwLock::new(StatusCode::BAD_REQUEST),
 			#[cfg(feature = "pattern")]
 			regex_cache: RwLock::new(
 				Cache::<Cow<'static, str>, Arc<Regex>>::builder()
@@ -54,6 +64,26 @@ impl ValidationSettings {
 
 	pub fn get_failure_mode() -> FailureMode {
 		*Self::get().failure_mode.read()
+	}
+
+	#[cfg(feature = "axum")]
+	pub fn set_failure_status_code(code: StatusCode) {
+		*Self::get().failure_status_code.write() = code;
+	}
+
+	#[cfg(feature = "axum")]
+	pub fn get_failure_status_code() -> StatusCode {
+		*Self::get().failure_status_code.read()
+	}
+
+	#[cfg(feature = "axum")]
+	pub fn set_failure_multipart_status_code(code: StatusCode) {
+		*Self::get().failure_multipart_status_code.write() = code;
+	}
+
+	#[cfg(feature = "axum")]
+	pub fn get_failure_multipart_status_code() -> StatusCode {
+		*Self::get().failure_multipart_status_code.read()
 	}
 
 	#[cfg(feature = "pattern")]

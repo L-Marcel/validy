@@ -12,6 +12,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [Implementations](#implementations)
 - [🎯 Work In Progress](#-work-in-progress)
 - [🔌 Axum Integration](#-axum-integration)
+  - [Custom status code](#custom-status-code)
 - [🧩 Manual Usage](#-manual-usage)
   - [Available traits](#available-traits)
 - [🚩 Feature Flags](#-feature-flags)
@@ -197,13 +198,14 @@ In contrast, no primitive `rule` is asynchronous, therefore the `asynchronous` c
 
 Some of these features are available now, but are just partially finished. So I will document only after finished then.
 
-- [] More test coverage.
-- [] Failure mode.
+- [ ] More test coverage.
+- [x] Custom validation status code.
+- [ ] Failure mode.
   - Now the default is `FailOncePerField` (covered by the tests).
-- [] Typed multipart/form-data validation support.
-  - [] file validation rules too (maybe).
-- [] Validation rules for uuid.
-- [] Validation rules for decimal (maybe).
+- [ ] Typed multipart/form-data validation support.
+  - [ ] file validation rules too (maybe).
+- [ ] Validation rules for uuid.
+- [ ] Validation rules for decimal (maybe).
 
 ## 🔌 Axum Integration
 
@@ -252,6 +254,15 @@ pub async fn create_user(
 
 Yes, it's beautiful.
 
+### Custom status code
+
+You can change the status code returned in case of failure:
+
+```rust
+ValidationSettings::set_failure_status_code(StatusCode::BAD_REQUEST);
+```
+
+This method is `thread-safe`. The default is `BAD_REQUEST`.
 
 ## 🧩 Manual Usage
 
