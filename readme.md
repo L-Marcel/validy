@@ -189,9 +189,9 @@ In contrast, no primitive `rule` is asynchronous, therefore the `asynchronous` c
 
 ## 🎯 Work In Progress
 
-- [-] More test coverage.
-- [-] Failure mode.
-- [-] Typed multipart/form-data validation support.
+- [] More test coverage.
+- [] Failure mode.
+- [] Typed multipart/form-data validation support.
   - [] file validation rules too (maybe).
 - [] Validation rules for uuid.
 - [] Validation rules for decimal (maybe).
