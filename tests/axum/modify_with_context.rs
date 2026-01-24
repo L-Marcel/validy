@@ -17,7 +17,7 @@ use validy::core::{Validate, ValidationError};
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
-#[validate(asynchronous, context = Arc<dyn MockedService>, modify, axum)]
+#[validate(context = Arc<dyn MockedService>, modify, axum)]
 pub struct TestDTO {
 	#[modify(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
@@ -25,7 +25,7 @@ pub struct TestDTO {
 
 	#[modify(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom_with_context(validate_unique_email))]
+	#[validate(custom_with_context(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -70,12 +70,12 @@ fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>)
 	(tag.to_string() + "_modified", None)
 }
 
-async fn validate_unique_email(
+fn validate_unique_email(
 	email: &str,
 	field_name: &str,
 	service: &Arc<dyn MockedService>,
 ) -> Result<(), ValidationError> {
-	let result = service.email_exists(email).await;
+	let result = service.sync_email_exists(email);
 
 	if result {
 		Err(ValidationError::builder()

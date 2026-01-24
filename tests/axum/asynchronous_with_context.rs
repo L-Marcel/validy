@@ -17,16 +17,13 @@ use validy::core::{Validate, ValidationError};
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
-#[validate(context = Arc<dyn MockedService>, payload, axum)]
+#[validate(asynchronous, context = Arc<dyn MockedService>, axum)]
 pub struct TestDTO {
-	#[modify(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
-	#[validate(required("name is required"))]
 	pub name: String,
 
-	#[modify(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(custom_with_context(validate_unique_email))]
+	#[validate(async_custom_with_context(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -34,56 +31,39 @@ pub struct TestDTO {
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
 	pub password: String,
 
-	#[special(from_type(String))]
-	#[modify(lowercase)]
-	#[modify(inline(|_| 3))]
 	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
-	#[modify(trim)]
 	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
-	#[modify(snake_case)]
-	#[modify(custom(modify_tag))]
 	pub tag: Option<String>,
 
-	#[special(from_type(RoleDTOWrapper))]
-	#[special(nested(RoleDTO, RoleDTOWrapper))]
+	#[special(nested(RoleDTO))]
 	pub role: Option<RoleDTO>,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default, Validate)]
-#[validate(payload, axum)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default, Validate)]
+#[validate(axum)]
 pub struct RoleDTO {
-	#[special(from_type(Vec<String>))]
 	#[validate(length(1..=2))]
 	#[special(for_each(
- 	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-    modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+ 	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
     validate(inline(|x: &u32| *x > 1)),
- 	  modify(inline(|x| x + 1))
 	))]
 	pub permissions: Vec<u32>,
 
-	#[special(from_type(Vec<String>))]
 	#[special(for_each(
-	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-		modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
 	  validate(inline(|x: &u32| *x > 1)),
-		modify(inline(|x| x + 1))
 	))]
 	pub alt_permissions: Vec<u32>,
 }
 
-fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	(tag.to_string() + "_modified", None)
-}
-
-fn validate_unique_email(
+async fn validate_unique_email(
 	email: &str,
 	field_name: &str,
 	service: &Arc<dyn MockedService>,
 ) -> Result<(), ValidationError> {
-	let result = service.sync_email_exists(email);
+	let result = service.email_exists(email).await;
 
 	if result {
 		Err(ValidationError::builder()
@@ -126,13 +106,13 @@ async fn should_validate_requests() {
 				"name": "  Alice  ",
 				"email": "alice@test.com",
 				"password": "secure",
-				"dependent_id": "99",
+				"dependent_id": 12,
 			}),
 			json!({
-				"name": "Alice",
+				"name": "  Alice  ",
 				"email": "alice@test.com",
 				"password": "secure",
-				"dependent_id": 3,
+				"dependent_id": 12,
 				"tag": null,
 				"role": null
 			}),
@@ -144,22 +124,22 @@ async fn should_validate_requests() {
 				"name": "Bob",
 				"email": "bob@test.com",
 				"password": "secure",
-				"dependent_id": "10",
+				"dependent_id": 10,
 				"tag": "  My Super Tag  ",
 				"role": {
-					"permissions": ["2", "10"],
-					"alt_permissions": ["2"]
+					"permissions": [2, 10],
+					"alt_permissions": [2]
 				}
 			}),
 			json!({
 				"name": "Bob",
 				"email": "bob@test.com",
 				"password": "secure",
-				"dependent_id": 3,
-				"tag": "my_super_tag_modified",
+				"dependent_id": 10,
+				"tag": "  My Super Tag  ",
 				"role": {
-					"permissions": [3, 11],
-					"alt_permissions": [3]
+					"permissions": [2, 10],
+					"alt_permissions": [2]
 				}
 			}),
 		),
@@ -170,7 +150,7 @@ async fn should_validate_requests() {
 				"name": "Charlie",
 				"email": "test@gmail.com",
 				"password": "ab",
-				"dependent_id": "5"
+				"dependent_id": 5
 			}),
 			json!({
 				"email": [{
@@ -190,10 +170,10 @@ async fn should_validate_requests() {
 				"name": "Dave",
 				"email": "dave@test.com",
 				"password": "secure",
-				"dependent_id": "5",
+				"dependent_id": 5,
 				"role": {
 					"permissions": [],
-					"alt_permissions": ["2"]
+					"alt_permissions": [2]
 				}
 			}),
 			json!({
@@ -212,20 +192,20 @@ async fn should_validate_requests() {
 			"/test_two",
 			StatusCode::CREATED,
 			json!({
-				"permissions": ["2", "10"],
-				"alt_permissions": ["2"]
+				"permissions": [2, 10],
+				"alt_permissions": [2]
 			}),
 			json!({
-				"permissions": [3, 11],
-				"alt_permissions": [3]
+				"permissions": [2, 10],
+				"alt_permissions": [2]
 			}),
 		),
 		(
 			"/test_two",
 			StatusCode::BAD_REQUEST,
 			json!({
-			  "permissions": ["0"],
-				"alt_permissions": ["2"]
+			  "permissions": [0],
+				"alt_permissions": [2]
 			}),
 			json!({
 			  "permissions": [{

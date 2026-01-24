@@ -110,7 +110,7 @@ pub fn get_async_payload_axum_multipart_extension(struct_name: &Ident) -> TokenS
 
  					match #struct_name::specific_async_validate_and_parse(&wrapper).await {
 						Ok(object) => Ok(object),
-						Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+						Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
  					}
 				}
  	    }
@@ -155,7 +155,7 @@ pub fn get_async_payload_with_context_axum_multipart_extension(struct_name: &Ide
 
       		match #struct_name::specific_async_validate_and_parse_with_context(&wrapper, &context).await {
       		  Ok(object) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
       		}
      	  }
       }

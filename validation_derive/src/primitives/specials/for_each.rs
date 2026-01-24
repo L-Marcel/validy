@@ -143,7 +143,7 @@ pub fn create_for_each(
 		let iterator_source = if is_ref {
 			quote! { ::std::mem::take(#reference) }
 		} else {
-			quote! { ::std::mem::take(&#reference) }
+			quote! { ::std::mem::take(&mut #reference) }
 		};
 
 		#[rustfmt::skip]

@@ -57,7 +57,7 @@ pub fn get_async_modification_with_context_axum_extension(struct_name: &Ident) -
        	async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
       		let Json(mut object): Json<#struct_name> = Json::from_request(req, state).await.map_err(|e| e.into_response())?;
 
-      		let context: <UserDTO as SpecificAsyncValidateAndModificateWithContext>::Context = FromRef::from_ref(state);
+      		let context: <TestDTO as SpecificAsyncValidateAndModificateWithContext>::Context = FromRef::from_ref(state);
 
       		match object.specific_async_validate_and_modificate_with_context(&context).await {
        			Ok(_) => Ok(object),
@@ -101,7 +101,7 @@ pub fn get_async_modification_axum_multipart_extension(struct_name: &Ident) -> T
 
       		match object.async_validate_and_modificate().await {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
       		}
        	}
       }
@@ -147,7 +147,7 @@ pub fn get_async_modification_with_context_axum_multipart_extension(struct_name:
            	.await
           {
        			Ok(_) => Ok(object),
-       			Err(errors) => Err((StatusCode::BAD_REQUEST, Json(errors)).into_response()),
+       			Err(errors) => Err((StatusCode::UNPROCESSABLE_ENTITY, Json(errors)).into_response()),
           }
        	}
       }
