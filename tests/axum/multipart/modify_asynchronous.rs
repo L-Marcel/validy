@@ -21,17 +21,20 @@ use validy::core::{Validate, ValidationError};
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, TryFromMultipart, Validate, Serialize)]
-#[validate(asynchronous, context = Arc<dyn MockedService>, axum, multipart)]
+#[validate(asynchronous, modify, axum, multipart)]
 pub struct TestDTO {
+	#[special(ignore)]
 	#[serde(skip)]
 	pub file: FieldData<NamedTempFile>,
 
 	#[form_data(field_name = "user_name")]
+	#[modify(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
 	pub name: String,
 
+	#[modify(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom_with_context(validate_unique_email))]
+	#[validate(async_custom(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -40,10 +43,14 @@ pub struct TestDTO {
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
 	pub password: String,
 
+	#[modify(inline(|_| 3))]
 	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
+	#[modify(trim)]
 	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
+	#[modify(snake_case)]
+	#[modify(custom(modify_tag))]
 	pub tag: Option<String>,
 
 	#[special(nested(RoleDTO))]
@@ -51,18 +58,20 @@ pub struct TestDTO {
 }
 
 #[derive(Debug, Clone, Deserialize, TryFromMultipart, Serialize, Default, Validate)]
-#[validate(axum, multipart)]
+#[validate(modify, axum, multipart)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
  	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
     validate(inline(|x: &u32| *x > 1)),
+ 	  modify(inline(|x| x + 1))
 	))]
 	pub permissions: Vec<u32>,
 
 	#[special(for_each(
 	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
 	  validate(inline(|x: &u32| *x > 1)),
+		modify(inline(|x| x + 1))
 	))]
 	pub alt_permissions: Vec<u32>,
 }
@@ -92,14 +101,12 @@ impl TryFromField for RoleDTO {
 	}
 }
 
-async fn validate_unique_email(
-	email: &str,
-	field_name: &str,
-	service: &Arc<dyn MockedService>,
-) -> Result<(), ValidationError> {
-	let result = service.email_exists(email).await;
+fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
+	(tag.to_string() + "_modified", None)
+}
 
-	if result {
+async fn validate_unique_email(email: &str, field_name: &str) -> Result<(), ValidationError> {
+	if email == "test@gmail.com" {
 		Err(ValidationError::builder()
 			.with_field(field_name.to_string())
 			.as_simple("unique")
@@ -159,10 +166,10 @@ async fn should_validate_requests() {
 				("file", "empty file"),
 			],
 			json!({
-				"name": "  Alice  ",
+				"name": "Alice",
 				"email": "alice@test.com",
 				"password": "secure",
-				"dependent_id": 12,
+				"dependent_id": 3,
 				"tag": null,
 				"role": null
 			}),
@@ -183,11 +190,11 @@ async fn should_validate_requests() {
 				"name": "Bob",
 				"email": "bob@test.com",
 				"password": "secure",
-				"dependent_id": 10,
-				"tag": "  My Super Tag  ",
+				"dependent_id": 3,
+				"tag": "my_super_tag_modified",
 				"role": {
-					"permissions": [2, 10],
-					"alt_permissions": [2]
+					"permissions": [3, 11],
+					"alt_permissions": [3]
 				}
 			}),
 		),
@@ -240,8 +247,8 @@ async fn should_validate_requests() {
 			StatusCode::CREATED,
 			vec![("permissions", "2"), ("permissions", "10"), ("alt_permissions", "2")],
 			json!({
-				"permissions": [2, 10],
-				"alt_permissions": [2]
+				"permissions": [3, 11],
+				"alt_permissions": [3]
 			}),
 		),
 		(

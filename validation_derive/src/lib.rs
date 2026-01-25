@@ -9,7 +9,7 @@ mod types;
 use std::cell::RefCell;
 
 use crate::{
-	attributes::get_attributes,
+	attributes::{get_attributes, get_others_attributes, get_others_attributes_by_fields},
 	core::{get_fields, get_fields_attributes},
 	factories::core::get_factory,
 	imports::ImportsSet,
@@ -120,7 +120,9 @@ fn impl_validation_macro(ast: &DeriveInput) -> Output {
 
 	attributes.modify = attributes.modify || attributes.payload;
 
+	let struct_attrs = get_others_attributes(&ast.attrs);
 	let factory = get_factory(&ast.ident, &attributes);
 	let fields_attributes = get_fields_attributes(fields, factory.as_ref(), &attributes, &imports);
-	factory.create(fields_attributes, &attributes, &imports)
+	let fields_attrs = get_others_attributes_by_fields(fields);
+	factory.create(fields_attributes, &attributes, &imports, struct_attrs, fields_attrs)
 }

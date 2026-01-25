@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
 	ImportsSet, Output,
@@ -15,7 +15,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, parse::ParseStream};
+use syn::{Attribute, Ident, parse::ParseStream};
 
 pub struct ValidationFactory<'a> {
 	struct_name: &'a Ident,
@@ -33,6 +33,8 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
+		_: Vec<(Attribute, Import)>,
+		_: HashMap<String, Vec<(Attribute, Import)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);

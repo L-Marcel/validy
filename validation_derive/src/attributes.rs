@@ -1,6 +1,13 @@
-use crate::primitives::commons::{ArgParser, parse_attrs};
+use std::collections::HashMap;
+
+use crate::{
+	imports::Import,
+	primitives::commons::{ArgParser, parse_attrs},
+};
 use proc_macro_error::emit_error;
-use syn::{DeriveInput, Error, Expr, Ident, LitBool, Result, Type, parse::ParseStream, spanned::Spanned};
+use syn::{
+	Attribute, DeriveInput, Error, Expr, Fields, Ident, LitBool, Result, Type, parse::ParseStream, spanned::Spanned,
+};
 
 #[derive(Default)]
 pub struct ValidationAttributes {
@@ -138,4 +145,46 @@ pub fn validate_failure_mode(input: &ParseStream, expr: &Expr) {
 	if segments.len() > 1 {
 		emit_error!(input.span(), "Too big path");
 	};
+}
+
+static OTHERS: &[(&str, Import)] = &[
+	("form_data", Import::TryFromMultipart),
+	("try_from_multipart", Import::TryFromMultipart),
+	("serde", Import::Deserialize),
+	("serde", Import::Serialize),
+];
+
+pub fn get_others_attributes(attrs: &[Attribute]) -> Vec<(Attribute, Import)> {
+	attrs
+		.iter()
+		.filter_map(|attribute| {
+			OTHERS.iter().find_map(|other| {
+				if attribute.path().is_ident(other.0) {
+					Some((attribute.clone(), other.1.clone()))
+				} else {
+					None
+				}
+			})
+		})
+		.collect()
+}
+
+pub fn get_others_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<(Attribute, Import)>> {
+	fields
+		.iter()
+		.enumerate()
+		.fold(HashMap::new(), |mut accumulator, (index, field)| {
+			let name: String = match &field.ident {
+				Some(ident) => ident.to_string(),
+				None => index.to_string(),
+			};
+
+			let attrs = get_others_attributes(&field.attrs);
+
+			if !attrs.is_empty() {
+				accumulator.insert(name, attrs);
+			}
+
+			accumulator
+		})
 }

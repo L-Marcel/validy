@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
 	ImportsSet, Output,
@@ -13,9 +13,10 @@ use crate::{
 		with_context::ValidationWithContextFactory,
 	},
 	fields::FieldAttributes,
+	imports::Import,
 };
 use proc_macro2::TokenStream;
-use syn::{Ident, parse::ParseStream};
+use syn::{Attribute, Ident, parse::ParseStream};
 
 pub trait AbstractValidationFactory {
 	fn create(
@@ -23,6 +24,8 @@ pub trait AbstractValidationFactory {
 		fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
+		struct_attributes: Vec<(Attribute, Import)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Import)>>,
 	) -> Output;
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream;
 }

@@ -21,7 +21,7 @@ use validy::core::{Validate, ValidationError};
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, TryFromMultipart, Validate, Serialize)]
-#[validate(asynchronous, context = Arc<dyn MockedService>, axum, multipart)]
+#[validate(asynchronous, axum, multipart)]
 pub struct TestDTO {
 	#[serde(skip)]
 	pub file: FieldData<NamedTempFile>,
@@ -31,7 +31,7 @@ pub struct TestDTO {
 	pub name: String,
 
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom_with_context(validate_unique_email))]
+	#[validate(async_custom(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -92,14 +92,8 @@ impl TryFromField for RoleDTO {
 	}
 }
 
-async fn validate_unique_email(
-	email: &str,
-	field_name: &str,
-	service: &Arc<dyn MockedService>,
-) -> Result<(), ValidationError> {
-	let result = service.email_exists(email).await;
-
-	if result {
+async fn validate_unique_email(email: &str, field_name: &str) -> Result<(), ValidationError> {
+	if email == "test@gmail.com" {
 		Err(ValidationError::builder()
 			.with_field(field_name.to_string())
 			.as_simple("unique")

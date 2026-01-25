@@ -5,6 +5,7 @@ use syn::{Ident, Index, LitStr, Type, parse_quote};
 use crate::{attributes::ValidationAttributes, primitives::option::required::RequiredArgs};
 
 pub struct FieldAttributes {
+	ignore: bool,
 	final_type: Type,
 	current_type: Type,
 	initial_type: Option<Type>,
@@ -22,6 +23,7 @@ pub struct FieldAttributes {
 impl FieldAttributes {
 	pub fn from_named(final_type: &Type, name: &Ident, attributes: &ValidationAttributes) -> Self {
 		FieldAttributes {
+			ignore: false,
 			final_type: final_type.clone(),
 			current_type: final_type.clone(),
 			initial_type: None,
@@ -39,6 +41,7 @@ impl FieldAttributes {
 
 	pub fn from_unamed(final_type: &Type, index: &Index, attributes: &ValidationAttributes) -> Self {
 		FieldAttributes {
+			ignore: false,
 			final_type: final_type.clone(),
 			current_type: final_type.clone(),
 			initial_type: None,
@@ -68,6 +71,10 @@ impl FieldAttributes {
 	}
 
 	pub fn get_operations(&mut self) -> TokenStream {
+		if self.ignore {
+			return quote! {};
+		}
+
 		let name = match (&self.name, &self.index) {
 			(Some(name), _) => name.to_string(),
 			(_, Some(index)) => index.index.to_string(),
@@ -175,6 +182,14 @@ impl FieldAttributes {
 		}
 
 		false
+	}
+
+	pub fn get_ignore(&self) -> bool {
+		self.ignore
+	}
+
+	pub fn set_ignore(&mut self, ignore: bool) {
+		self.ignore = ignore;
 	}
 
 	pub fn get_current_type(&self) -> &Type {
