@@ -115,9 +115,10 @@ pub fn get_async_default_with_context_axum_multipart_extension(struct_name: &Ide
 	#[rustfmt::skip]
   let result = quote! {
     const _: () = {
-      use axum::{
+      use axum_typed_multipart::{TryFromMultipartWithState};
+  		use axum::{
    			Json,
-   			extract::{FromRef, FromRequest, Request},
+   			extract::{FromRef, FromRequest, Request, Multipart, State},
    			http::StatusCode,
    			response::{IntoResponse, Response},
       };

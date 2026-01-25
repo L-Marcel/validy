@@ -16,8 +16,8 @@ use crate::{
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::cell::RefCell;
-use syn::{Ident, Type, parse::ParseStream};
+use std::{cell::RefCell, collections::HashMap};
+use syn::{Attribute, Ident, Type, parse::ParseStream};
 
 pub struct PayloadWithContextFactory<'a> {
 	struct_name: &'a Ident,
@@ -39,6 +39,8 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
+		struct_attributes: Vec<(Attribute, Option<Import>)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -49,7 +51,8 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
 		let context_type = self.context_type;
 
 		let mut code_factory = PayloadsCodeFactory(&mut fields);
-		let (wrapper_struct, wrapper_ident) = code_factory.wrapper(struct_name);
+		let (wrapper_struct, wrapper_ident) =
+			code_factory.wrapper(struct_name, struct_attributes, fields_attributes, imports);
 		let extensions = get_payload_with_context_extensions(
 			self.struct_name,
 			attributes,

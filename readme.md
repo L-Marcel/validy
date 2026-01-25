@@ -431,8 +431,9 @@ Primitive rules for the `#[special(...)]` attribute.
 | **Rule** | **Description** |
 | :-------- | :------- |
 | `nested`(value = <type>, wrapper = <?type>) | Validates the fields of a nested struct. Warning: cyclical references can cause compilation issues. |
+| `ignore` | Ignores any validation or modification rule. |
 | `for_each`(config?(from_item = <?type>, to_collection = <?type>, from_collection = <?type>), \<rule>) | Applies validation rules to every element in a collection. The `from_item` arg from the optional `config` rule defines the type of each collection item. The `to_collection` arg defines the final type of the collection, and the `from_collection` arg defines the initial type. It's like a `from_type` adapter for collections. |
-| `from_type`(value = <?type>) | Must be defined before all other rules on a field. |
+| `from_type`(value = <?type>) | Defines the type of the field in the wrapper. Must be defined before all other rules on a field. |
 
 ## 📐 Useful Macros
 

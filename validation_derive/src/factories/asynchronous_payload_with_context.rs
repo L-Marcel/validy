@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, collections::HashMap};
 
 use crate::{
 	ImportsSet, Output,
@@ -14,7 +14,7 @@ use crate::{
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Ident, Type, parse::ParseStream};
+use syn::{Attribute, Ident, Type, parse::ParseStream};
 
 pub struct AsyncPayloadWithContextFactory<'a> {
 	struct_name: &'a Ident,
@@ -36,6 +36,8 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
+		struct_attributes: Vec<(Attribute, Option<Import>)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -46,7 +48,8 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 		let context_type = self.context_type;
 
 		let mut code_factory = PayloadsCodeFactory(&mut fields);
-		let (wrapper_struct, wrapper_ident) = code_factory.wrapper(struct_name);
+		let (wrapper_struct, wrapper_ident) =
+			code_factory.wrapper(struct_name, struct_attributes, fields_attributes, imports);
 		let extensions = get_async_payload_with_context_extensions(
 			self.struct_name,
 			attributes,

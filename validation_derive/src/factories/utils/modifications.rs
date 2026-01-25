@@ -12,6 +12,10 @@ impl<'a> ModificationsCodeFactory<'a> {
 			.clone()
 			.filter(|field| field.get_modifications() > 0)
 			.map(|field| {
+				if field.get_ignore() {
+					return quote! {};
+				};
+
 				let reference = field.get_reference();
 				let original_reference = field.get_original_reference();
 				quote! {

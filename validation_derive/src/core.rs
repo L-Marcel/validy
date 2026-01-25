@@ -38,7 +38,7 @@ use crate::{
 			suffix::create_suffix, url::create_url,
 		},
 		ranges::{length::create_length, range::create_range},
-		specials::{for_each::create_for_each, from_type::create_from_type},
+		specials::{for_each::create_for_each, from_type::create_from_type, ignore::create_ignore},
 		time::{
 			after_now::create_after_now, after_today::create_after_today, before_now::create_before_now,
 			before_today::create_before_today, default_time::create_time, naive_date::create_naive_date,
@@ -229,6 +229,7 @@ pub fn get_special_by_attr_macro(
 		m if m.path.is_ident("nested") => factory.create_nested(m.input, field),
 		m if m.path.is_ident("from_type") => create_from_type(m.input, field, attributes),
 		m if m.path.is_ident("for_each") => create_for_each(factory, m, field, attributes, imports),
+		m if m.path.is_ident("ignore") => create_ignore(m.input, field, attributes),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");
 			quote! {}
