@@ -147,14 +147,16 @@ pub fn validate_failure_mode(input: &ParseStream, expr: &Expr) {
 	};
 }
 
-static OTHERS: &[(&str, Import)] = &[
-	("form_data", Import::TryFromMultipart),
-	("try_from_multipart", Import::TryFromMultipart),
-	("serde", Import::Deserialize),
-	("serde", Import::Serialize),
+static OTHERS: &[(&str, Option<Import>)] = &[
+	("TryFromMultipart", Some(Import::TryFromMultipart)),
+	("form_data", None),
+	("try_from_multipart", None),
+	("Serialize", Some(Import::Serialize)),
+	("serde", None),
+	("serde", None),
 ];
 
-pub fn get_others_attributes(attrs: &[Attribute]) -> Vec<(Attribute, Import)> {
+pub fn get_others_attributes(attrs: &[Attribute]) -> Vec<(Attribute, Option<Import>)> {
 	attrs
 		.iter()
 		.filter_map(|attribute| {
@@ -169,7 +171,7 @@ pub fn get_others_attributes(attrs: &[Attribute]) -> Vec<(Attribute, Import)> {
 		.collect()
 }
 
-pub fn get_others_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<(Attribute, Import)>> {
+pub fn get_others_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<(Attribute, Option<Import>)>> {
 	fields
 		.iter()
 		.enumerate()

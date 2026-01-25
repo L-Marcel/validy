@@ -72,4 +72,18 @@ cargo expand --all-features --test mod axum::asynchronous_with_context >> temp/a
 cargo expand --all-features --test mod axum::default >> temp/axum/default.rs || true
 cargo expand --all-features --test mod axum::with_context >> temp/axum/with_context.rs || true
 
+cargo expand --all-features --test mod axum::multipart::payload >> temp/axum/multipart/payload.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_payload >> temp/axum/multipart/asynchronous_payload.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_payload_with_context >> temp/axum/multipart/asynchronous_payload_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::payload >> temp/axum/multipart/payload.rs || true
+cargo expand --all-features --test mod axum::multipart::payload_with_context >> temp/axum/multipart/payload_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_modify >> temp/axum/multipart/asynchronous_modify.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_modify_with_context >> temp/axum/multipart/asynchronous_modify_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::modify >> temp/axum/multipart/modify.rs || true
+cargo expand --all-features --test mod axum::multipart::modify_with_context >> temp/axum/multipart/modify_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous >> temp/axum/multipart/asynchronous_.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_with_context >> temp/axum/multipart/asynchronous_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::default >> temp/axum/multipart/default.rs || true
+cargo expand --all-features --test mod axum::multipart::with_context >> temp/axum/multipart/with_context.rs || true
+
 cargo check --all-features --test mod

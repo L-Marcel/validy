@@ -33,8 +33,8 @@ impl<'a> AbstractValidationFactory for AsyncValidationFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		_: Vec<(Attribute, Import)>,
-		_: HashMap<String, Vec<(Attribute, Import)>>,
+		_: Vec<(Attribute, Option<Import>)>,
+		_: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);

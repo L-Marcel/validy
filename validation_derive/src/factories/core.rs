@@ -24,8 +24,8 @@ pub trait AbstractValidationFactory {
 		fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		struct_attributes: Vec<(Attribute, Import)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Import)>>,
+		struct_attributes: Vec<(Attribute, Option<Import>)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output;
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream;
 }

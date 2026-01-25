@@ -13,13 +13,21 @@ impl<'a> PayloadsCodeFactory<'a> {
 	pub fn wrapper(
 		&self,
 		name: &'a Ident,
-		struct_attributes: Vec<(Attribute, Import)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Import)>>,
+		struct_attributes: Vec<(Attribute, Option<Import>)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 		imports: &RefCell<ImportsSet>,
 	) -> (TokenStream, Ident) {
-		struct_attributes
-			.iter()
-			.for_each(|(_, import)| imports.borrow_mut().add(import.clone()));
+		struct_attributes.iter().for_each(|(_, import)| {
+			if let Some(import) = import.as_ref() {
+				imports.borrow_mut().add(import.clone())
+			}
+		});
+
+		fields_attributes.values().flatten().for_each(|(_, import)| {
+			if let Some(import) = import.as_ref() {
+				imports.borrow_mut().add(import.clone())
+			}
+		});
 
 		let derives = imports.borrow().get_derives();
 		let final_struct_attributes: Vec<&Attribute> =

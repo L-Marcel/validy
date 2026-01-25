@@ -104,7 +104,10 @@ use syn::{DeriveInput, spanned::Spanned};
 /// * `async_custom`(function = <function>, params = <?array>): Modifies the value using a custom async function.
 /// * `async_custom_with_context`(function = <function>, params = <?array>): Modifies the value using a custom async function with context access.
 #[proc_macro_error]
-#[proc_macro_derive(Validate, attributes(validate, modify, special))]
+#[proc_macro_derive(
+	Validate,
+	attributes(validate, modify, special, form_data, try_from_multipart, serde)
+)]
 pub fn validation_macro(input: Input) -> Output {
 	let ast = syn::parse(input).unwrap();
 	impl_validation_macro(&ast)

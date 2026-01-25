@@ -34,8 +34,8 @@ impl<'a> AbstractValidationFactory for AsyncPayloadFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		struct_attributes: Vec<(Attribute, Import)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Import)>>,
+		struct_attributes: Vec<(Attribute, Option<Import>)>,
+		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
