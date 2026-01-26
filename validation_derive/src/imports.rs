@@ -31,8 +31,9 @@ impl ImportsSet {
 					Import::ValidyHelpers => import_validy_helpers(),
 					Import::AsyncTrait => import_async_trait(),
 					Import::TryFromMultipart => import_try_from_multipart(),
-					Import::Deserialize => import_deserialize(),
 					Import::Serialize => import_serialize(),
+					Import::Clone => quote! {},
+					Import::Copy => quote! {},
 				};
 
 				quote! { use #import; }
@@ -46,11 +47,19 @@ impl ImportsSet {
 		let mut derives = vec![quote!(Debug), quote!(Default), quote!(::serde::Deserialize)];
 
 		if self.set.contains(&Import::Serialize) {
-			derives.push(quote!(::serde::Serialize));
+			derives.push(quote!(Serialize));
 		}
 
 		if self.set.contains(&Import::TryFromMultipart) {
-			derives.push(quote!(axum_typed_multipart::TryFromMultipart));
+			derives.push(quote!(TryFromMultipart));
+		}
+
+		if self.set.contains(&Import::Clone) {
+			derives.push(quote!(Clone));
+		}
+
+		if self.set.contains(&Import::Copy) {
+			derives.push(quote!(Copy));
 		}
 
 		quote! {
@@ -68,7 +77,8 @@ pub enum Import {
 	ValidyHelpers,
 	AsyncTrait,
 	TryFromMultipart,
-	Deserialize,
+	Clone,
+	Copy,
 	Serialize,
 }
 
@@ -166,18 +176,6 @@ fn import_serialize() -> TokenStream {
 		FoundCrate::Name(name) => {
 			let ident = Ident::new(&name, Span::call_site());
 			quote!(#ident::Serialize)
-		}
-	}
-}
-
-fn import_deserialize() -> TokenStream {
-	let found_crate = crate_name("serde").expect("serde is present in `Cargo.toml`");
-
-	match found_crate {
-		FoundCrate::Itself => quote!(crate::Deserialize),
-		FoundCrate::Name(name) => {
-			let ident = Ident::new(&name, Span::call_site());
-			quote!(#ident::Deserialize)
 		}
 	}
 }
