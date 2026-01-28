@@ -96,7 +96,7 @@ fn modificate_code(code: &mut String, _field_name: &str) -> Result<(), Validatio
 }
 
 #[test]
-pub fn should_validate() {
+fn should_validate() {
 	let mut wrapper = CreateUserDTOWrapper {
 		name: None,
 		email: Some("test@gmail.com".to_string()),
