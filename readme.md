@@ -329,7 +329,7 @@ This method is `thread-safe`. The default status code is `BAD_REQUEST`.
 
 ### Multipart support
 
-When you enable the `axum_multipart` feature, the library automatically add `TryFromMultipart` macro derive to the wrapper and generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled.
+When you enable the `axum_multipart` feature, the library automatically generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled. But you still need to add `TryFromMultipart` macro derive if `payload` is disabled.
 
 ```rust
 use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
@@ -608,7 +608,7 @@ Primitive rules for the `#[special(...)]` attribute.
 
 ## 📨 Wrappers
 
-Wrappers are generated structs similar to the original struct where all fields are covered with `Option`. They all have the `Default` and `Debug` derive macros by default. And when the `multipart` configuration attribute is disabled, they also implement `Deserialize`. Ultimately, the reasons I could think of for having all optional fields was the deserialization and validation of required fields with custom errors and parses.
+Wrappers are generated structs similar to the original struct where all fields are covered with `Option`. They all have the `Default` derive macros by default. When the `multipart` configuration attribute is enabled, they also has `TryFromMultipart` derive macro, otherwise, they has `Deserialize` derive macro.
 
 The name of the wrapper struct is the name of the origional struct with the suffix 'Wrapper'. For example, `CreateUserDTO` generates a public wrapper named `CreateUserDTOWrapper`. The generated wrapper is left exposed for you to use. You also can use `#[wrapper_derive(...)]` struct attribute in the origional struct to apply derive macros on the wrapper and `#[wrapper_attribute(...)]` attribute in the origional struct to apply attributes on the wrapper.
 
