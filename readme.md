@@ -856,16 +856,7 @@ If the examples aren't enough, I've included a more complete and documented exam
 
 ## 🎯 Work In Progress
 
-Some of these features are available now, but are only partially finished. I will document them fully once they are complete.
-
-- [x] More test coverage.
-- [x] Custom validation status code.
-- [x] Typed multipart/form-data validation support.
-  - [x] File validation rules.
-- [x] Validation rules for uuid.
-- [x] Better documentation.
-- [x] Fully support for external crates field and structs attributes.
-- [ ] Failure mode.
+- [ ] Failure mode test coverage.
   - The current default is `FailOncePerField` (covered by the tests).
 - [ ] Validation rules for decimal (maybe).
 
