@@ -13,3 +13,7 @@ pub mod email;
 pub mod field_content_type;
 pub mod field_file_name;
 pub mod field_name;
+pub mod inline;
+pub mod ip;
+pub mod ipv4;
+pub mod ipv6;
