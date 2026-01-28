@@ -4,7 +4,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Attribute, DeriveInput, Fields, Ident, Meta, Path, Token, parse_quote, punctuated::Punctuated};
 
-use crate::{fields::FieldAttributes, get_fields};
+use crate::{attributes::ValidationAttributes, fields::FieldAttributes, get_fields};
 
 #[derive(Default)]
 pub struct WrapperFactory {
@@ -14,17 +14,21 @@ pub struct WrapperFactory {
 }
 
 impl WrapperFactory {
-	pub fn from(input: &DeriveInput) -> Self {
+	pub fn from(input: &DeriveInput, attributes: &ValidationAttributes) -> Self {
 		let fields = get_fields(input);
 		let struct_attributes = get_attributes_by_structs(&input.attrs);
 		let fields_attributes = get_attributes_by_fields(fields);
 		let mut struct_derives = get_derives_by_structs(&input.attrs);
 
-		let native_derives: [Path; 3] = [
-			parse_quote!(Debug),
-			parse_quote!(Default),
-			parse_quote!(::serde::Deserialize),
-		];
+		let native_derives = if attributes.multipart {
+			vec![parse_quote!(Debug), parse_quote!(Default)]
+		} else {
+			vec![
+				parse_quote!(Debug),
+				parse_quote!(Default),
+				parse_quote!(::serde::Deserialize),
+			]
+		};
 
 		struct_derives.extend(native_derives);
 
@@ -74,7 +78,7 @@ impl WrapperFactory {
 	}
 }
 
-static SUPPORTED_ATTRIBUTES: &[&str] = &["form_data", "try_from_multipart", "serde"];
+static SUPPORTED_ATTRIBUTES: &[&str] = &["form_data", "field", "serde"];
 fn get_attributes_for_fields(attributes: &[Attribute]) -> Vec<Attribute> {
 	attributes
 		.iter()
@@ -110,19 +114,18 @@ fn get_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<Attribute>> 
 		})
 }
 
-static NATIVE_ATTRIBUTES: &[&str] = &["derive", "validate", "special", "modificate", "wrapper_derive"];
+static SUPPORTED_STRUCT_ATTRIBUTES: &[&str] = &["serde", "try_from_multipart"];
 fn get_attributes_by_structs(attributes: &[Attribute]) -> Vec<Attribute> {
 	attributes
 		.iter()
 		.filter_map(|attribute| {
-			if NATIVE_ATTRIBUTES
-				.iter()
-				.all(|native| !attribute.path().is_ident(native))
-			{
-				return Some(attribute.clone());
-			}
-
-			None
+			SUPPORTED_STRUCT_ATTRIBUTES.iter().find_map(|other| {
+				if attribute.path().is_ident(other) {
+					Some(attribute.clone())
+				} else {
+					None
+				}
+			})
 		})
 		.collect()
 }

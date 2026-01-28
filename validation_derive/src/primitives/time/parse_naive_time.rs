@@ -43,17 +43,17 @@ impl ArgParser for ParseNaiveTimeArgs {
 	}
 }
 
-pub fn create_parse_naive_time(
+pub fn create_naive_time_parse(
 	input: ParseStream,
 	field: &mut FieldAttributes,
 	imports: &RefCell<ImportsSet>,
 ) -> TokenStream {
-	imports.borrow_mut().add(Import::ModificationFunction(
+	imports.borrow_mut().add(Import::ParsingFunction(
 		"time::default_naive_time as default_naive_time_fn",
 	));
-	imports.borrow_mut().add(Import::ModificationFunction(
-		"time::parse_naive_time as parse_naive_time_fn",
-	));
+	imports
+		.borrow_mut()
+		.add(Import::ParsingFunction("time::parse_naive_time as parse_naive_time_fn"));
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::core::ValidationError;
+use ::validy::core::ValidationError;
 
 pub fn validate_suffix(
 	value: &str,

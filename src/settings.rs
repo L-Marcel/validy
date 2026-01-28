@@ -1,14 +1,15 @@
 #[cfg(feature = "axum")]
 use axum::http::StatusCode;
+#[cfg(feature = "pattern")]
+use moka::sync::Cache;
 use parking_lot::RwLock;
+#[cfg(feature = "pattern")]
+use parking_lot::RwLockReadGuard;
+#[cfg(feature = "pattern")]
+use regex::Regex;
 use std::sync::OnceLock;
 #[cfg(feature = "pattern")]
 use std::{borrow::Cow, sync::Arc};
-
-#[cfg(feature = "pattern")]
-use moka::sync::Cache;
-#[cfg(feature = "pattern")]
-use regex::Regex;
 
 #[derive(Clone, Copy)]
 pub enum FailureMode {
@@ -92,7 +93,7 @@ impl ValidationSettings {
 	}
 
 	#[cfg(feature = "pattern")]
-	pub fn get_regex_cache() -> Cache<Cow<'static, str>, Arc<Regex>> {
-		Self::get().regex_cache.read().clone()
+	pub fn get_regex_cache() -> RwLockReadGuard<'static, Cache<Cow<'static, str>, Arc<Regex>>> {
+		Self::get().regex_cache.read()
 	}
 }

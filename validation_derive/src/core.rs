@@ -54,10 +54,10 @@ use crate::{
 		time::{
 			after_now::create_after_now, after_today::create_after_today, before_now::create_before_now,
 			before_today::create_before_today, default_time::create_time, naive_date::create_naive_date,
-			naive_time::create_naive_time, now::create_now, parse_naive_date::create_parse_naive_date,
-			parse_naive_time::create_parse_naive_time, parse_time::create_parse_time, today::create_today,
+			naive_time::create_naive_time, now::create_now, parse_naive_date::create_naive_date_parse,
+			parse_naive_time::create_naive_time_parse, parse_time::create_time_parse, today::create_today,
 		},
-		uuids::{parse_uuid::create_parse_uuid, uuid::create_uuid},
+		uuids::{parse_uuid::create_uuid_parse, uuid::create_uuid},
 	},
 };
 
@@ -204,7 +204,6 @@ pub fn get_modificate_by_attr_macro(
 		m if m.path.is_ident("async_custom_with_context") => {
 			create_async_custom_with_context_modification(m.input, field, attributes)
 		}
-		m if m.path.is_ident("parse_uuid") => create_parse_uuid(m.input, field, imports),
 		m if m.path.is_ident("trim") => create_trim(field),
 		m if m.path.is_ident("trim_end") => create_trim_end(field),
 		m if m.path.is_ident("trim_start") => create_trim_start(field),
@@ -218,9 +217,6 @@ pub fn get_modificate_by_attr_macro(
 		m if m.path.is_ident("kebab_case") => create_kebab_case(field, imports),
 		m if m.path.is_ident("shouty_kebab_case") => create_shouty_kebab_case(field, imports),
 		m if m.path.is_ident("train_case") => create_train_case(field, imports),
-		m if m.path.is_ident("parse_time") => create_parse_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_time") => create_parse_naive_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_date") => create_parse_naive_date(m.input, field, imports),
 		m if m.path.is_ident("inline") => create_inline_modification(m.input, field),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");
@@ -248,10 +244,10 @@ pub fn get_parse_by_attr_macro(
 		m if m.path.is_ident("async_custom_with_context") => {
 			create_async_custom_with_context_parse(m.input, field, attributes)
 		}
-		m if m.path.is_ident("parse_uuid") => create_parse_uuid(m.input, field, imports),
-		m if m.path.is_ident("parse_time") => create_parse_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_time") => create_parse_naive_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_date") => create_parse_naive_date(m.input, field, imports),
+		m if m.path.is_ident("uuid") => create_uuid_parse(m.input, field, imports),
+		m if m.path.is_ident("time") => create_time_parse(m.input, field, imports),
+		m if m.path.is_ident("naive_time") => create_naive_time_parse(m.input, field, imports),
+		m if m.path.is_ident("naive_date") => create_naive_date_parse(m.input, field, imports),
 		m if m.path.is_ident("inline") => create_inline_parse(m.input, field),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");

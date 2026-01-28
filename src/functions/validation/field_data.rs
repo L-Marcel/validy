@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use axum_typed_multipart::FieldData;
 
-use crate::core::ValidationError;
+use ::validy::core::ValidationError;
 
 pub fn validate_field_content_type<T>(
 	value: &FieldData<T>,
@@ -11,7 +11,7 @@ pub fn validate_field_content_type<T>(
 	code: impl Into<Cow<'static, str>>,
 	message: impl Into<Cow<'static, str>>,
 ) -> Result<(), ValidationError> {
-	use crate::utils::regex::RegexManager;
+	use ::validy::utils::regex::RegexManager;
 	match RegexManager::get_or_create(regex) {
 		Err(_) => Err(ValidationError::builder()
 			.with_field(field)
@@ -43,7 +43,7 @@ pub fn validate_field_name<T>(
 	code: impl Into<Cow<'static, str>>,
 	message: impl Into<Cow<'static, str>>,
 ) -> Result<(), ValidationError> {
-	use crate::utils::regex::RegexManager;
+	use ::validy::utils::regex::RegexManager;
 	match RegexManager::get_or_create(regex) {
 		Err(_) => Err(ValidationError::builder()
 			.with_field(field)
@@ -75,7 +75,7 @@ pub fn validate_field_file_name<T>(
 	code: impl Into<Cow<'static, str>>,
 	message: impl Into<Cow<'static, str>>,
 ) -> Result<(), ValidationError> {
-	use crate::utils::regex::RegexManager;
+	use ::validy::utils::regex::RegexManager;
 	match RegexManager::get_or_create(regex) {
 		Err(_) => Err(ValidationError::builder()
 			.with_field(field)

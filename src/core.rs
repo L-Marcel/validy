@@ -1,4 +1,4 @@
-use crate::builders::ValidationErrorBuilder;
+use ::validy::builders::ValidationErrorBuilder;
 use async_trait::async_trait;
 use serde::Serialize;
 use std::{borrow::Cow, collections::HashMap};
@@ -6,7 +6,7 @@ use std::{borrow::Cow, collections::HashMap};
 pub use validation_derive::*;
 
 #[cfg(feature = "modification")]
-pub type ModificationResult<T> = (T, Option<ValidationError>);
+pub type ParseResult<T> = (T, Option<ValidationError>);
 pub type ValidationErrors = HashMap<Cow<'static, str>, Vec<ValidationError>>;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]

@@ -1,4 +1,3 @@
-use chrono::NaiveDate;
 use validy::core::{Validate, ValidateAndParse};
 
 use validy::{assert_errors, assert_parsed};
@@ -9,33 +8,16 @@ use validy::{assert_errors, assert_parsed};
 #[wrapper_derive(Clone)]
 struct Test {
 	#[special(from_type(String))]
-	#[modificate(parse_naive_date("%Y-%m-%d"))]
-	pub a: NaiveDate,
+	#[parse(inline(|x: String| x.parse::<u32>().unwrap_or(0)))]
+	pub a: u32,
 	#[special(from_type(String))]
-	#[modificate(parse_naive_date("%Y-%m-%d"))]
-	pub b: Option<NaiveDate>,
+	#[parse(inline(|x: String, a: &Option<u32>| a.unwrap_or(x.parse::<u32>().unwrap_or(0)), [&tmp_2_a]))]
+	pub b: Option<u32>,
 }
 
 #[test]
-fn should_modificate_parse_naive_dates() {
-	let cases = [
-		(
-			"2024-02-29",
-			NaiveDate::parse_from_str("2024-02-29", "%Y-%m-%d").expect("should be a valid naive date"),
-		),
-		(
-			"1999-12-31",
-			NaiveDate::parse_from_str("1999-12-31", "%Y-%m-%d").expect("should be a valid naive date"),
-		),
-		(
-			"2023-01-01",
-			NaiveDate::parse_from_str("2023-01-01", "%Y-%m-%d").expect("should be a valid naive date"),
-		),
-		(
-			"2023-07-10",
-			NaiveDate::parse_from_str("2023-07-10", "%Y-%m-%d").expect("should be a valid naive date"),
-		),
-	];
+fn should_parse_inlines() {
+	let cases = [("4", 4), ("a", 0), ("8", 8)];
 
 	let mut wrapper = TestWrapper::default();
 	let mut result = Test::validate_and_parse(wrapper.clone());
@@ -51,7 +33,7 @@ fn should_modificate_parse_naive_dates() {
 	}
 
 	let last_a = result.expect("should be a valid result").a;
-	for (case, expected) in cases.iter() {
+	for (case, _) in cases.iter() {
 		wrapper.b = Some(case.to_string());
 		result = Test::validate_and_parse(wrapper.clone());
 
@@ -60,7 +42,7 @@ fn should_modificate_parse_naive_dates() {
 			wrapper,
 			Test {
 				a: last_a,
-				b: Some(*expected)
+				b: Some(last_a)
 			}
 		);
 	}

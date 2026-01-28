@@ -1,4 +1,4 @@
-use crate::core::ValidationError;
+use ::validy::core::ValidationError;
 use std::{
 	borrow::Cow,
 	net::{IpAddr, Ipv4Addr, Ipv6Addr},

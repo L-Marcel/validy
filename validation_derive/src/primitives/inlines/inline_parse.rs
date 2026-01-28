@@ -54,7 +54,7 @@ pub fn create_inline_parse(input: ParseStream, field: &mut FieldAttributes) -> T
 		#[rustfmt::skip]
 		let result = quote! {
 			let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-			  (#closure)(#reference, #(#extra_args),*)
+			  (#closure)(*#reference, #(#extra_args),*)
       } else {
 			  Default::default()
 			};
@@ -66,8 +66,7 @@ pub fn create_inline_parse(input: ParseStream, field: &mut FieldAttributes) -> T
 		#[rustfmt::skip]
 		let result = quote! {
       let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-        let _ref = &mut #reference;
-        (#closure)(_ref, #(#extra_args),*)
+        (#closure)(#reference, #(#extra_args),*)
       } else {
 			  Default::default()
 			};

@@ -36,8 +36,8 @@ impl<'a> PayloadWithContextFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
-	fn init(&mut self, input: &DeriveInput) {
-		self.wrapper_factory = WrapperFactory::from(input);
+	fn init(&mut self, input: &DeriveInput, attributes: &ValidationAttributes) {
+		self.wrapper_factory = WrapperFactory::from(input, attributes);
 	}
 
 	fn create(

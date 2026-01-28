@@ -43,17 +43,17 @@ impl ArgParser for ParseTimeArgs {
 	}
 }
 
-pub fn create_parse_time(
+pub fn create_time_parse(
 	input: ParseStream,
 	field: &mut FieldAttributes,
 	imports: &RefCell<ImportsSet>,
 ) -> TokenStream {
 	imports
 		.borrow_mut()
-		.add(Import::ModificationFunction("time::default_time as default_time_fn"));
+		.add(Import::ParsingFunction("time::default_time as default_time_fn"));
 	imports
 		.borrow_mut()
-		.add(Import::ModificationFunction("time::parse_time as parse_time_fn"));
+		.add(Import::ParsingFunction("time::parse_time as parse_time_fn"));
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();

@@ -4,6 +4,7 @@ set -e
 mkdir -p temp
 mkdir -p temp/validations
 mkdir -p temp/modifications
+mkdir -p temp/parsings
 mkdir -p temp/axum
 mkdir -p temp/axum/multipart
 
@@ -88,3 +89,5 @@ cargo expand --all-features --test mod axum::multipart::default >> temp/axum/mul
 cargo expand --all-features --test mod axum::multipart::with_context >> temp/axum/multipart/with_context.rs || true
 
 cargo check --all-features --test mod
+
+cargo expand --all-features --test mod quick >> temp/quick.rs || true

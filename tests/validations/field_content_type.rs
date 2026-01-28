@@ -56,7 +56,7 @@ fn should_validate_field_content_types() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"a" => ("content-type", "unsupported content-type"),
+				"a" => ("content_type", "unsupported content type"),
 			});
 		}
 	}
@@ -73,7 +73,7 @@ fn should_validate_field_content_types() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"b" => ("content-type", "custom message"),
+				"b" => ("content_type", "custom message"),
 			});
 		}
 	}
@@ -91,7 +91,7 @@ fn should_validate_field_content_types() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"c" => ("custom_code", "unsupported content-type"),
+				"c" => ("custom_code", "unsupported content type"),
 			});
 		}
 	}

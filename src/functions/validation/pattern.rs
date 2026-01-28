@@ -1,4 +1,4 @@
-use crate::{core::ValidationError, utils::regex::RegexManager};
+use ::validy::{core::ValidationError, utils::regex::RegexManager};
 use std::borrow::Cow;
 
 pub fn validate_pattern(

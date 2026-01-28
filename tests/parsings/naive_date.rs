@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use chrono::NaiveDate;
 use validy::core::{Validate, ValidateAndParse};
 
 use validy::{assert_errors, assert_parsed};
@@ -9,25 +9,32 @@ use validy::{assert_errors, assert_parsed};
 #[wrapper_derive(Clone)]
 struct Test {
 	#[special(from_type(String))]
-	#[modificate(parse_uuid)]
-	pub a: Uuid,
+	#[parse(naive_date("%Y-%m-%d"))]
+	pub a: NaiveDate,
 	#[special(from_type(String))]
-	#[modificate(parse_uuid)]
-	pub b: Option<Uuid>,
+	#[parse(naive_date("%Y-%m-%d"))]
+	pub b: Option<NaiveDate>,
 }
 
 #[test]
-fn should_modificate_parse_uuids() {
+fn should_parse_naive_dates() {
 	let cases = [
 		(
-			"f47ac10b-58cc-4372-a567-0e02b2c3d479",
-			Uuid::parse_str("f47ac10b-58cc-4372-a567-0e02b2c3d479").expect("should be a valid uuid"),
+			"2024-02-29",
+			NaiveDate::parse_from_str("2024-02-29", "%Y-%m-%d").expect("should be a valid naive date"),
 		),
 		(
-			"urn:uuid:6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-			Uuid::parse_str("6ba7b810-9dad-11d1-80b4-00c04fd430c8").expect("should be a valid uuid"),
+			"1999-12-31",
+			NaiveDate::parse_from_str("1999-12-31", "%Y-%m-%d").expect("should be a valid naive date"),
 		),
-		("00000000-0000-0000-0000-000000000000", Uuid::nil()),
+		(
+			"2023-01-01",
+			NaiveDate::parse_from_str("2023-01-01", "%Y-%m-%d").expect("should be a valid naive date"),
+		),
+		(
+			"2023-07-10",
+			NaiveDate::parse_from_str("2023-07-10", "%Y-%m-%d").expect("should be a valid naive date"),
+		),
 	];
 
 	let mut wrapper = TestWrapper::default();
@@ -57,10 +64,4 @@ fn should_modificate_parse_uuids() {
 			}
 		);
 	}
-
-	wrapper.a = Some("invalid-uuid".to_string());
-	result = Test::validate_and_parse(wrapper.clone());
-	assert_errors!(result, wrapper, {
-		"a" => ("uuid", "invalid uuid format"),
-	});
 }

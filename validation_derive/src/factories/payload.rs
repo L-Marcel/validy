@@ -33,8 +33,8 @@ impl<'a> PayloadFactory<'a> {
 }
 
 impl<'a> AbstractValidationFactory for PayloadFactory<'a> {
-	fn init(&mut self, input: &DeriveInput) {
-		self.wrapper_factory = WrapperFactory::from(input);
+	fn init(&mut self, input: &DeriveInput, attributes: &ValidationAttributes) {
+		self.wrapper_factory = WrapperFactory::from(input, attributes);
 	}
 
 	fn create(

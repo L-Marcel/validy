@@ -40,17 +40,17 @@ impl ArgParser for ParseUuidArgs {
 	}
 }
 
-pub fn create_parse_uuid(
+pub fn create_uuid_parse(
 	input: ParseStream,
 	field: &mut FieldAttributes,
 	imports: &RefCell<ImportsSet>,
 ) -> TokenStream {
 	imports
 		.borrow_mut()
-		.add(Import::ModificationFunction("uuid::default_uuid as default_uuid_fn"));
+		.add(Import::ParsingFunction("uuid::default_uuid as default_uuid_fn"));
 	imports
 		.borrow_mut()
-		.add(Import::ModificationFunction("uuid::parse_uuid as parse_uuid_fn"));
+		.add(Import::ParsingFunction("uuid::parse_uuid as parse_uuid_fn"));
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();

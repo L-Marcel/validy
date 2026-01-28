@@ -1,42 +1,42 @@
-use chrono::{DateTime, FixedOffset};
+use chrono::NaiveDateTime;
 use validy::core::{Validate, ValidateAndParse};
 
 use validy::{assert_errors, assert_parsed};
 
 #[allow(unused)]
-#[derive(Debug, Default, Validate, PartialEq)]
+#[derive(Debug, Clone, Default, Validate, PartialEq)]
 #[validate(payload)]
 #[wrapper_derive(Clone)]
 struct Test {
 	#[special(from_type(String))]
-	#[modificate(parse_time("%Y-%m-%d %H:%M:%S %z"))]
-	pub a: DateTime<FixedOffset>,
+	#[parse(naive_time("%Y-%m-%d %H:%M:%S"))]
+	pub a: NaiveDateTime,
 	#[special(from_type(String))]
-	#[modificate(parse_time("%Y-%m-%d %H:%M:%S %z"))]
-	pub b: Option<DateTime<FixedOffset>>,
+	#[parse(naive_time("%Y-%m-%d %H:%M:%S"))]
+	pub b: Option<NaiveDateTime>,
 }
 
 #[test]
-fn should_modificate_parse_times() {
+fn should_parse_naive_times() {
 	let cases = [
 		(
-			"2024-02-29 10:00:00 -0300",
-			DateTime::parse_from_str("2024-02-29 10:00:00 -0300", "%Y-%m-%d %H:%M:%S %z")
+			"2024-02-29 10:00:00",
+			NaiveDateTime::parse_from_str("2024-02-29 10:00:00", "%Y-%m-%d %H:%M:%S")
 				.expect("should be a valid naive date"),
 		),
 		(
-			"1999-12-31 23:59:59 +0530",
-			DateTime::parse_from_str("1999-12-31 23:59:59 +0530", "%Y-%m-%d %H:%M:%S %z")
+			"1999-12-31 23:59:59",
+			NaiveDateTime::parse_from_str("1999-12-31 23:59:59", "%Y-%m-%d %H:%M:%S")
 				.expect("should be a valid naive date"),
 		),
 		(
-			"2023-01-01 00:00:00 -0000",
-			DateTime::parse_from_str("2023-01-01 00:00:00 -0000", "%Y-%m-%d %H:%M:%S %z")
+			"2023-01-01 00:00:00",
+			NaiveDateTime::parse_from_str("2023-01-01 00:00:00", "%Y-%m-%d %H:%M:%S")
 				.expect("should be a valid naive date"),
 		),
 		(
-			"2023-07-10 14:30:00 +0000",
-			DateTime::parse_from_str("2023-07-10 14:30:00 +0000", "%Y-%m-%d %H:%M:%S %z")
+			"2023-07-10 14:30:00",
+			NaiveDateTime::parse_from_str("2023-07-10 14:30:00", "%Y-%m-%d %H:%M:%S")
 				.expect("should be a valid naive date"),
 		),
 	];

@@ -23,8 +23,8 @@ impl Default for FieldContentTypeArgs {
 	fn default() -> Self {
 		FieldContentTypeArgs {
 			pattern: None,
-			code: LitStr::new("content-type", Span::call_site()),
-			message: LitStr::new("unsupported content-type", Span::call_site()),
+			code: LitStr::new("content_type", Span::call_site()),
+			message: LitStr::new("unsupported content type", Span::call_site()),
 		}
 	}
 }

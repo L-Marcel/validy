@@ -18,7 +18,7 @@ use proc_macro2::TokenStream;
 use syn::{DeriveInput, Ident, parse::ParseStream};
 
 pub trait AbstractValidationFactory {
-	fn init(&mut self, _input: &DeriveInput) {}
+	fn init(&mut self, _input: &DeriveInput, _attributes: &ValidationAttributes) {}
 
 	fn create(
 		&self,

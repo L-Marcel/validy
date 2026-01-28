@@ -21,10 +21,10 @@ use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, Validate, Serialize)]
 #[validate(asynchronous, context = Arc<dyn MockedService>, payload, axum, multipart)]
-#[wrapper_derive(TryFromMultipart)]
+#[wrapper_derive(TryFromMultipart, Serialize)]
 pub struct TestDTO {
-	#[special(ignore)]
 	#[serde(skip)]
+	#[form_data(limit = "10MB")]
 	pub file: FieldData<NamedTempFile>,
 
 	#[form_data(field_name = "user_name")]

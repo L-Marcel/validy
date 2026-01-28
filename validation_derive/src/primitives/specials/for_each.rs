@@ -79,7 +79,7 @@ pub fn create_for_each(
 	let reference = field.get_reference();
 	field.enter_scope();
 	let is_ref = field.is_ref();
-	field.set_is_ref(true);
+	field.set_is_ref(!field.is_payload());
 
 	let item_reference = field.get_reference();
 	let mut args = ForEachArgs::default();
@@ -142,7 +142,7 @@ pub fn create_for_each(
 			#[rustfmt::skip]
   		let result = quote! {
   		  let mut #new_reference: #to_collection = Default::default();
-  		  for #item_reference in #reference.into_iter() {
+  		  for mut #item_reference in *#reference.into_iter() {
   				#(#operations)*
 
   				Extend::extend(
@@ -162,8 +162,7 @@ pub fn create_for_each(
 			#[rustfmt::skip]
   		let result = quote! {
   		  let mut #new_reference: #to_collection = Default::default();
-        let _ref_source = &mut #reference;
-  		  for #item_reference in _ref_source.into_iter() {
+  		  for mut #item_reference in #reference.into_iter() {
   				#(#operations)*
 
   				Extend::extend(

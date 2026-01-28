@@ -65,7 +65,7 @@ pub fn create_custom_with_context_parse(
 		#[rustfmt::skip]
 		let result = quote! {
   		let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
-        #function(#reference, #field_name, context, #(#extra_args),*)
+        #function(*#reference, #field_name, context, #(#extra_args),*)
   		} else {
         (Default::default(), None)
 			};
@@ -84,8 +84,7 @@ pub fn create_custom_with_context_parse(
 		#[rustfmt::skip]
 		let result = quote! {
   		let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
-        let _ref = &mut #reference;
-        #function(_ref, #field_name, context, #(#extra_args),*)
+        #function(#reference, #field_name, context, #(#extra_args),*)
   		} else {
 			  (Default::default(), None)
 			};

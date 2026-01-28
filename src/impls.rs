@@ -1,4 +1,4 @@
-use crate::core::{
+use ::validy::core::{
 	IntoValidationError, NestedValidationError, SimpleValidationError, ValidationError, ValidationErrors,
 };
 use std::{borrow::Cow, collections::HashMap};

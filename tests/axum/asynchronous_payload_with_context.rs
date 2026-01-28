@@ -58,7 +58,7 @@ pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
  	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-    parse(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+    parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))),
     validate(inline(|x: &u32| *x > 1)),
  	  modificate(inline(|x: &mut u32| *x += 1))
 	))]
@@ -67,7 +67,7 @@ pub struct RoleDTO {
 	#[special(from_type(Vec<String>))]
 	#[special(for_each(
 	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-		parse(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+		parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))),
 	  validate(inline(|x: &u32| *x > 1)),
 		modificate(inline(|x: &mut u32| *x += 1))
 	))]

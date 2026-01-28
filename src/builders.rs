@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::core::{NestedValidationError, SimpleValidationError, ValidationErrors};
+use ::validy::core::{NestedValidationError, SimpleValidationError, ValidationErrors};
 
 pub struct ValidationErrorBuilder {}
 
