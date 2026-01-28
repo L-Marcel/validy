@@ -5,7 +5,7 @@ use validy::{assert_errors, assert_parsed};
 #[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 #[validate(payload)]
-#[wrapper_derive(Clone)]
+#[wrapper_derive(Debug, Clone)]
 struct Test {
 	#[modificate(inline(|x: &mut String| *x = (x.to_string() + "_test").to_string()))]
 	pub a: String,

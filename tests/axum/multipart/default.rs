@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use axum::extract::multipart::Field;
 use axum::{
 	Json, Router,
-	body::Body,
 	extract::State,
 	http::{Method, Request, StatusCode, header},
 	response::IntoResponse,
@@ -19,9 +18,11 @@ use tower::ServiceExt;
 use validy::core::{Validate, ValidationError};
 
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
+use crate::utils::multipart_body::build_multipart_body;
 
 #[derive(Debug, TryFromMultipart, Validate, Serialize)]
 #[validate(axum, multipart)]
+#[wrapper_derive(Debug)]
 pub struct TestDTO {
 	#[serde(skip)]
 	pub file: FieldData<NamedTempFile>,
@@ -52,6 +53,7 @@ pub struct TestDTO {
 
 #[derive(Debug, Clone, Deserialize, TryFromMultipart, Serialize, Default, Validate)]
 #[validate(axum, multipart)]
+#[wrapper_derive(Debug)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
@@ -114,21 +116,6 @@ pub async fn test_handle(
 
 pub async fn test_two_handle(data: RoleDTO) -> Result<impl IntoResponse, (StatusCode, String)> {
 	Ok((StatusCode::CREATED, Json(data)))
-}
-
-fn build_multipart_body(fields: &[(&str, &str)]) -> (String, Body) {
-	let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
-	let mut body = String::new();
-	for (name, value) in fields {
-		body.push_str(&format!("--{}\r\n", boundary));
-		body.push_str(&format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", name));
-		body.push_str(value);
-		body.push_str("\r\n");
-	}
-	body.push_str(&format!("--{}--\r\n", boundary));
-
-	let content_type = format!("multipart/form-data; boundary={}", boundary);
-	(content_type, Body::from(body))
 }
 
 #[tokio::test]

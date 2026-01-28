@@ -2,7 +2,11 @@ use std::collections::HashMap;
 
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
-use syn::{Attribute, DeriveInput, Fields, Ident, Meta, Path, Token, parse_quote, punctuated::Punctuated};
+use syn::{
+	AttrStyle, Attribute, DeriveInput, Fields, Ident, Meta, Path, Token, parse_quote,
+	punctuated::Punctuated,
+	token::{Bracket, Pound},
+};
 
 use crate::{attributes::ValidationAttributes, fields::FieldAttributes, get_fields};
 
@@ -21,13 +25,12 @@ impl WrapperFactory {
 		let mut struct_derives = get_derives_by_structs(&input.attrs);
 
 		let native_derives = if attributes.multipart {
-			vec![parse_quote!(Debug), parse_quote!(Default)]
-		} else {
 			vec![
-				parse_quote!(Debug),
 				parse_quote!(Default),
-				parse_quote!(::serde::Deserialize),
+				parse_quote!(::axum_typed_multipart::TryFromMultipart),
 			]
+		} else {
+			vec![parse_quote!(Default), parse_quote!(::serde::Deserialize)]
 		};
 
 		struct_derives.extend(native_derives);
@@ -78,20 +81,31 @@ impl WrapperFactory {
 	}
 }
 
-static SUPPORTED_ATTRIBUTES: &[&str] = &["form_data", "field", "serde"];
+static NATIVE_FIELD_ATTRIBUTES: &[&str] = &["wrapper_attribute", "validate", "modificate", "parse", "special"];
 fn get_attributes_for_fields(attributes: &[Attribute]) -> Vec<Attribute> {
-	attributes
-		.iter()
-		.filter_map(|attribute| {
-			SUPPORTED_ATTRIBUTES.iter().find_map(|other| {
-				if attribute.path().is_ident(other) {
-					Some(attribute.clone())
-				} else {
-					None
+	let mut fields_attributes = Vec::new();
+
+	for attribute in attributes {
+		if attribute.path().is_ident("wrapper_attribute")
+			&& let Ok(nested) = attribute.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+		{
+			for meta in nested {
+				if !NATIVE_FIELD_ATTRIBUTES
+					.iter()
+					.any(|native| meta.path().is_ident(native))
+				{
+					fields_attributes.push(Attribute {
+						pound_token: Pound::default(),
+						style: AttrStyle::Outer,
+						bracket_token: Bracket::default(),
+						meta,
+					});
 				}
-			})
-		})
-		.collect()
+			}
+		}
+	}
+
+	fields_attributes
 }
 
 fn get_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<Attribute>> {
@@ -114,23 +128,41 @@ fn get_attributes_by_fields(fields: &Fields) -> HashMap<String, Vec<Attribute>> 
 		})
 }
 
-static SUPPORTED_STRUCT_ATTRIBUTES: &[&str] = &["serde", "try_from_multipart"];
+static NATIVE_STRUCT_ATTRIBUTES: &[&str] = &[
+	"derive",
+	"wrapper_derive",
+	"wrapper_attribute",
+	"validate",
+	"modificate",
+	"parse",
+];
 fn get_attributes_by_structs(attributes: &[Attribute]) -> Vec<Attribute> {
-	attributes
-		.iter()
-		.filter_map(|attribute| {
-			SUPPORTED_STRUCT_ATTRIBUTES.iter().find_map(|other| {
-				if attribute.path().is_ident(other) {
-					Some(attribute.clone())
-				} else {
-					None
+	let mut struct_attributes = Vec::new();
+
+	for attribute in attributes {
+		if attribute.path().is_ident("wrapper_attribute")
+			&& let Ok(nested) = attribute.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
+		{
+			for meta in nested {
+				if !NATIVE_STRUCT_ATTRIBUTES
+					.iter()
+					.any(|native| meta.path().is_ident(native))
+				{
+					struct_attributes.push(Attribute {
+						pound_token: Pound::default(),
+						style: AttrStyle::Outer,
+						bracket_token: Bracket::default(),
+						meta,
+					});
 				}
-			})
-		})
-		.collect()
+			}
+		}
+	}
+
+	struct_attributes
 }
 
-static NATIVE_DERIVES: &[&str] = &["Debug", "Default", "Deserialize"];
+static NATIVE_DERIVES: &[&str] = &["Default", "Deserialize", "TryFromMultipart"];
 fn get_derives_by_structs(attributes: &[Attribute]) -> Vec<Path> {
 	let mut derives = Vec::new();
 
@@ -140,7 +172,7 @@ fn get_derives_by_structs(attributes: &[Attribute]) -> Vec<Path> {
 		{
 			for meta in nested {
 				if let Meta::Path(path) = meta
-					&& !NATIVE_DERIVES.iter().all(|native| path.is_ident(native))
+					&& !NATIVE_DERIVES.iter().any(|native| path.is_ident(native))
 				{
 					derives.push(path);
 				}

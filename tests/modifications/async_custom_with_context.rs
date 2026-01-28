@@ -4,7 +4,7 @@ use validy::{assert_errors, assert_parsed, validation_error};
 #[allow(unused)]
 #[derive(Debug, Validate, PartialEq)]
 #[validate(payload, asynchronous, context = bool)]
-#[wrapper_derive(Clone)]
+#[wrapper_derive(Debug, Clone)]
 struct Test {
 	#[modificate(async_custom_with_context(modificate))]
 	pub a: String,

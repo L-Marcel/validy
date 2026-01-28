@@ -6,7 +6,7 @@ use validy::{assert_errors, assert_parsed};
 #[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 #[validate(payload)]
-#[wrapper_derive(Clone)]
+#[wrapper_derive(Debug, Clone)]
 struct Test {
 	#[special(from_type(String))]
 	#[parse(time("%Y-%m-%d %H:%M:%S %z"))]

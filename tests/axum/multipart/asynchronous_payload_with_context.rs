@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use axum::extract::multipart::Field;
 use axum::{
 	Json, Router,
-	body::Body,
 	extract::State,
 	http::{Method, Request, StatusCode, header},
 	response::IntoResponse,
@@ -18,16 +17,19 @@ use tower::ServiceExt;
 use validy::core::{Validate, ValidationError};
 
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
+use crate::utils::multipart_body::build_multipart_body;
 
 #[derive(Debug, Validate, Serialize)]
 #[validate(asynchronous, context = Arc<dyn MockedService>, payload, axum, multipart)]
-#[wrapper_derive(TryFromMultipart, Serialize)]
+#[wrapper_derive(Debug, Serialize)]
+#[wrapper_attribute(try_from_multipart(strict))]
 pub struct TestDTO {
 	#[serde(skip)]
-	#[form_data(limit = "10MB")]
+	#[wrapper_attribute(serde(skip))]
+	#[wrapper_attribute(form_data(limit = "10MB"))]
 	pub file: FieldData<NamedTempFile>,
 
-	#[form_data(field_name = "user_name")]
+	#[wrapper_attribute(form_data(field_name = "user_name"))]
 	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
 	#[validate(required("name is required"))]
@@ -40,7 +42,7 @@ pub struct TestDTO {
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
 
-	#[form_data(limit = "20B")]
+	#[wrapper_attribute(form_data(limit = "20B"))]
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
 	pub password: String,
 
@@ -62,6 +64,7 @@ pub struct TestDTO {
 
 #[derive(Debug, Clone, TryFromMultipart, Deserialize, Serialize, Default, Validate)]
 #[validate(modificate, axum, multipart)]
+#[wrapper_derive(Debug)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
@@ -134,21 +137,6 @@ pub async fn test_two_handle(data: RoleDTO) -> Result<impl IntoResponse, (Status
 	Ok((StatusCode::CREATED, Json(data)))
 }
 
-fn build_multipart_body(fields: &[(&str, &str)]) -> (String, Body) {
-	let boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
-	let mut body = String::new();
-	for (name, value) in fields {
-		body.push_str(&format!("--{}\r\n", boundary));
-		body.push_str(&format!("Content-Disposition: form-data; name=\"{}\"\r\n\r\n", name));
-		body.push_str(value);
-		body.push_str("\r\n");
-	}
-	body.push_str(&format!("--{}--\r\n", boundary));
-
-	let content_type = format!("multipart/form-data; boundary={}", boundary);
-	(content_type, Body::from(body))
-}
-
 #[tokio::test]
 async fn should_validate_requests() {
 	let service = Arc::new(ImplMockedService {});
@@ -178,6 +166,19 @@ async fn should_validate_requests() {
 				"tag": null,
 				"role": null
 			}),
+		),
+		(
+			"/test",
+			StatusCode::BAD_REQUEST,
+			vec![
+				("user_name", "  Alice  "),
+				("email", "alice@test.com"),
+				("password", "secure"),
+				("dependent_id", "99"),
+				("file", "empty file"),
+				("strict", "strict test"),
+			],
+			json!("field 'strict' is not expected"),
 		),
 		(
 			"/test",

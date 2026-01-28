@@ -8,7 +8,7 @@ use validy::{
 #[allow(unused)]
 #[derive(Debug, Clone, Deserialize, Validate, PartialEq)]
 #[validate(payload)]
-#[wrapper_derive(Clone)]
+#[wrapper_derive(Debug, Clone)]
 struct Test {
 	#[validate(required("custom message"))]
 	pub a: u8,
@@ -23,7 +23,7 @@ struct Test {
 #[allow(unused)]
 #[derive(Debug, Clone, Deserialize, Default, Validate, PartialEq)]
 #[validate(payload)]
-#[wrapper_derive(Clone, Copy)]
+#[wrapper_derive(Debug, Clone, Copy)]
 struct NestedTest {
 	#[validate(required("custom message", "custom_code"))]
 	pub a: u8,

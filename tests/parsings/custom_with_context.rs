@@ -4,7 +4,7 @@ use validy::{assert_errors, assert_parsed, validation_error};
 #[allow(unused)]
 #[derive(Debug, Validate, PartialEq)]
 #[validate(payload, context = bool)]
-#[wrapper_derive(Clone)]
+#[wrapper_derive(Debug, Clone)]
 struct Test {
 	#[special(from_type(String))]
 	#[parse(custom_with_context(parse))]
