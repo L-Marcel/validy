@@ -8,7 +8,9 @@ use syn::{Error, Result, Type, meta::ParseNestedMeta, parse::ParseStream};
 use crate::{
 	ImportsSet,
 	attributes::ValidationAttributes,
-	core::{get_operation_by_attr_macro, get_special_by_attr_macro, get_validation_by_attr_macro},
+	core::{
+		get_modificate_by_attr_macro, get_parse_by_attr_macro, get_special_by_attr_macro, get_validate_by_attr_macro,
+	},
 	factories::core::AbstractValidationFactory,
 	fields::FieldAttributes,
 	primitives::commons::{ArgParser, extract_inner_type, parse_attrs, remove_parens},
@@ -77,22 +79,12 @@ pub fn create_for_each(
 	let reference = field.get_reference();
 	field.enter_scope();
 	let is_ref = field.is_ref();
-	field.set_is_ref(true);
+	field.set_is_ref(!field.is_payload());
 
 	let item_reference = field.get_reference();
 	let mut args = ForEachArgs::default();
 	let current_type = field.get_current_type().clone();
 	args.update_from_type(&current_type, field);
-
-	if attributes.modify {
-		field.increment_modifications();
-		let new_reference = field.get_reference();
-		field.set_is_ref(false);
-
-		operations.push(quote! {
-		  let mut #new_reference = #item_reference.clone();
-		});
-	};
 
 	let _ = meta.parse_nested_meta(|meta| {
 		if meta.path.is_ident("config") {
@@ -107,14 +99,21 @@ pub fn create_for_each(
 			args.update_from_item_type(field);
 		} else if meta.path.is_ident("validate")
 			&& let Err(error) = meta.parse_nested_meta(|meta| {
-				let validation = get_validation_by_attr_macro(factory, meta, field, attributes, imports);
+				let validation = get_validate_by_attr_macro(factory, meta, field, attributes, imports);
 				operations.push(validation.clone());
 				Ok(())
 			}) {
 			emit_error!(error.span(), error.to_string());
-		} else if meta.path.is_ident("modify")
+		} else if meta.path.is_ident("modificate")
 			&& let Err(error) = meta.parse_nested_meta(|meta| {
-				let operation = get_operation_by_attr_macro(factory, meta, field, attributes, imports);
+				let operation = get_modificate_by_attr_macro(factory, meta, field, attributes, imports);
+				operations.push(operation.clone());
+				Ok(())
+			}) {
+			emit_error!(error.span(), error.to_string());
+		} else if meta.path.is_ident("parse")
+			&& let Err(error) = meta.parse_nested_meta(|meta| {
+				let operation = get_parse_by_attr_macro(factory, meta, field, attributes, imports);
 				operations.push(operation.clone());
 				Ok(())
 			}) {
@@ -131,67 +130,92 @@ pub fn create_for_each(
 	});
 
 	args.update_from_type(&current_type, field);
-
 	let final_item_reference = field.get_reference();
 	field.exit_scope();
-	field.increment_modifications();
 
-	if attributes.modify && !attributes.payload {
-		let new_reference = field.get_reference();
-		let to_collection = args.to_collection;
+	match (attributes.payload, attributes.modificate, is_ref) {
+		(true, _, true) => {
+			field.increment_modifications();
+			let new_reference = field.get_reference();
+			let to_collection = args.to_collection;
 
-		let iterator_source = if is_ref {
-			quote! { ::std::mem::take(#reference) }
-		} else {
-			quote! { ::std::mem::take(&mut #reference) }
-		};
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let mut #new_reference: #to_collection = Default::default();
+  		  for mut #item_reference in *#reference.into_iter() {
+  				#(#operations)*
 
-		#[rustfmt::skip]
-		let result = quote! {
-		  let mut #new_reference: #to_collection = Default::default();
-		  for #item_reference in #iterator_source.into_iter() {
-				#(#operations)*
+  				Extend::extend(
+  					&mut #new_reference,
+  					::std::iter::once(#final_item_reference)
+  				);
+  		  }
+  		};
 
-				Extend::extend(
-					&mut #new_reference,
-					::std::iter::once(#final_item_reference.clone())
-				);
-		  }
-		};
+			result
+		}
+		(true, _, false) => {
+			field.increment_modifications();
+			let new_reference = field.get_reference();
+			let to_collection = args.to_collection;
 
-		result
-	} else if attributes.payload {
-		let new_reference = field.get_reference();
-		let to_collection = args.to_collection;
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let mut #new_reference: #to_collection = Default::default();
+  		  for mut #item_reference in #reference.into_iter() {
+  				#(#operations)*
 
-		#[rustfmt::skip]
-		let result = quote! {
-		  let mut #new_reference: #to_collection = Default::default();
-		  for #item_reference in #reference.into_iter() {
-				#(#operations)*
+  				Extend::extend(
+  					&mut #new_reference,
+  					::std::iter::once(#final_item_reference)
+  				);
+  		  }
+  		};
 
-				Extend::extend(
-					&mut #new_reference,
-					::std::iter::once(#final_item_reference.clone())
-				);
-		  }
-		};
+			result
+		}
+		(_, true, true) => {
+			#[rustfmt::skip]
+  		let result = quote! {
+        let _ref_source = #reference;
+  		  for #item_reference in _ref_source.into_iter() {
+  				#(#operations)*
+  		  }
+  		};
 
-		result
-	} else {
-		let iterator_source = if is_ref {
-			quote! { #reference }
-		} else {
-			quote! { &#reference }
-		};
+			result
+		}
+		(_, true, false) => {
+			#[rustfmt::skip]
+  		let result = quote! {
+        let _ref_source = &mut #reference;
+  		  for #item_reference in _ref_source.into_iter() {
+  				#(#operations)*
+  		  }
+  		};
 
-		#[rustfmt::skip]
-		let result = quote! {
-			for ref #item_reference in #iterator_source {
-				#(#operations)*
-		  }
-		};
+			result
+		}
+		(_, _, true) => {
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let _ref_source = #reference;
+  			for #item_reference in _ref_source.into_iter() {
+  				#(#operations)*
+  		  }
+  		};
 
-		result
+			result
+		}
+		(_, _, false) => {
+			let result = quote! {
+			  let _ref_source = &#reference;
+				for #item_reference in _ref_source.into_iter() {
+					#(#operations)*
+			  }
+			};
+
+			result
+		}
 	}
 }

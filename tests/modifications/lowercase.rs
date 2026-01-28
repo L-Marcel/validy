@@ -5,17 +5,17 @@ use validy::{assert_modification, assert_validation};
 
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
-#[validate(modify)]
+#[validate(modificate)]
 struct Test {
-	#[modify(lowercase)]
-	#[modify(lowercase)]
+	#[modificate(lowercase)]
+	#[modificate(lowercase)]
 	pub a: String,
-	#[modify(lowercase)]
+	#[modificate(lowercase)]
 	pub b: Option<String>,
 }
 
 #[test]
-fn should_modify_lowercases() {
+fn should_modificate_lowercases() {
 	let cases = [
 		("", ""),
 		(" ABC", " abc"),

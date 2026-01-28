@@ -18,10 +18,19 @@ use crate::{
 				async_custom_with_context::create_async_custom_with_context_modification,
 				custom::create_custom_modification, custom_with_context::create_custom_with_context_modification,
 			},
+			parsing::{
+				async_custom::create_async_custom_parse,
+				async_custom_with_context::create_async_custom_with_context_parse, custom::create_custom_parse,
+				custom_with_context::create_custom_with_context_parse,
+			},
 			validation::{
 				async_custom::create_async_custom, async_custom_with_context::create_async_custom_with_context,
 				custom::create_custom, custom_with_context::create_custom_with_context,
 			},
+		},
+		field_datas::{
+			field_content_type::create_field_content_type, field_file_name::create_field_file_name,
+			field_name::create_field_name,
 		},
 		format::{
 			camel_case::create_camel_case, capitalize::create_capitalize, kebab_case::create_kebab_case,
@@ -30,7 +39,10 @@ use crate::{
 			snake_case::create_snake_case, train_case::create_train_case, trim::create_trim, trim_end::create_trim_end,
 			trim_start::create_trim_start, uppercase::create_uppercase,
 		},
-		inlines::{inline_modification::create_inline_modification, inline_validation::create_inline_validation},
+		inlines::{
+			inline_modification::create_inline_modification, inline_parse::create_inline_parse,
+			inline_validation::create_inline_validation,
+		},
 		ips::{ip::create_ip, ipv4::create_ipv4, ipv6::create_ipv6},
 		option::required::create_required,
 		patterns::{
@@ -42,10 +54,10 @@ use crate::{
 		time::{
 			after_now::create_after_now, after_today::create_after_today, before_now::create_before_now,
 			before_today::create_before_today, default_time::create_time, naive_date::create_naive_date,
-			naive_time::create_naive_time, now::create_now, parse_naive_date::create_parse_naive_date,
-			parse_naive_time::create_parse_naive_time, parse_time::create_parse_time, today::create_today,
+			naive_time::create_naive_time, now::create_now, parse_naive_date::create_naive_date_parse,
+			parse_naive_time::create_naive_time_parse, parse_time::create_time_parse, today::create_today,
 		},
-		uuids::{parse_uuid::create_parse_uuid, uuid::create_uuid},
+		uuids::{parse_uuid::create_uuid_parse, uuid::create_uuid},
 	},
 };
 
@@ -81,30 +93,26 @@ pub fn get_fields_attributes(
 			}
 		};
 
-		if attributes.modify {
-			let reference = field_attributes.get_reference();
-			field_attributes.increment_modifications();
-			let new_reference = field_attributes.get_reference();
-			field_attributes.set_is_ref(false);
-
-			field_attributes.add_operation(quote! {
-			  let mut #new_reference = #reference.clone();
-			});
-		};
-
 		for attr in &field.attrs {
 			if attr.path().is_ident("validate")
 				&& let Err(error) = attr.parse_nested_meta(|meta| {
 					let validation =
-						get_validation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
+						get_validate_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(validation.clone());
 					Ok(())
 				}) {
 				emit_error!(error.span(), error.to_string());
-			} else if attr.path().is_ident("modify")
+			} else if attr.path().is_ident("modificate")
 				&& let Err(error) = attr.parse_nested_meta(|meta| {
 					let operation =
-						get_operation_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
+						get_modificate_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
+					field_attributes.add_operation(operation.clone());
+					Ok(())
+				}) {
+				emit_error!(error.span(), error.to_string());
+			} else if attr.path().is_ident("parse")
+				&& let Err(error) = attr.parse_nested_meta(|meta| {
+					let operation = get_parse_by_attr_macro(factory, meta, &mut field_attributes, attributes, imports);
 					field_attributes.add_operation(operation.clone());
 					Ok(())
 				}) {
@@ -126,7 +134,7 @@ pub fn get_fields_attributes(
 	fields_attributes
 }
 
-pub fn get_validation_by_attr_macro(
+pub fn get_validate_by_attr_macro(
 	_factory: &dyn AbstractValidationFactory,
 	meta: ParseNestedMeta<'_>,
 	field: &mut FieldAttributes,
@@ -165,6 +173,9 @@ pub fn get_validation_by_attr_macro(
 		m if m.path.is_ident("after_today") => create_after_today(m.input, field, imports),
 		m if m.path.is_ident("today") => create_today(m.input, field, imports),
 		m if m.path.is_ident("naive_date") => create_naive_date(m.input, field, imports),
+		m if m.path.is_ident("field_content_type") => create_field_content_type(m.input, field, imports),
+		m if m.path.is_ident("field_file_name") => create_field_file_name(m.input, field, imports),
+		m if m.path.is_ident("field_name") => create_field_name(m.input, field, imports),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");
 			quote! {}
@@ -172,15 +183,15 @@ pub fn get_validation_by_attr_macro(
 	}
 }
 
-pub fn get_operation_by_attr_macro(
+pub fn get_modificate_by_attr_macro(
 	_factory: &dyn AbstractValidationFactory,
 	meta: ParseNestedMeta<'_>,
 	field: &mut FieldAttributes,
 	attributes: &ValidationAttributes,
 	imports: &RefCell<ImportsSet>,
 ) -> TokenStream {
-	if !attributes.modify {
-		emit_error!(meta.input.span(), "requires modify attribute");
+	if !attributes.modificate {
+		emit_error!(meta.input.span(), "requires modificate attribute");
 		return quote! {};
 	}
 
@@ -193,7 +204,6 @@ pub fn get_operation_by_attr_macro(
 		m if m.path.is_ident("async_custom_with_context") => {
 			create_async_custom_with_context_modification(m.input, field, attributes)
 		}
-		m if m.path.is_ident("parse_uuid") => create_parse_uuid(m.input, field, imports),
 		m if m.path.is_ident("trim") => create_trim(field),
 		m if m.path.is_ident("trim_end") => create_trim_end(field),
 		m if m.path.is_ident("trim_start") => create_trim_start(field),
@@ -207,10 +217,38 @@ pub fn get_operation_by_attr_macro(
 		m if m.path.is_ident("kebab_case") => create_kebab_case(field, imports),
 		m if m.path.is_ident("shouty_kebab_case") => create_shouty_kebab_case(field, imports),
 		m if m.path.is_ident("train_case") => create_train_case(field, imports),
-		m if m.path.is_ident("parse_time") => create_parse_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_time") => create_parse_naive_time(m.input, field, imports),
-		m if m.path.is_ident("parse_naive_date") => create_parse_naive_date(m.input, field, imports),
 		m if m.path.is_ident("inline") => create_inline_modification(m.input, field),
+		_ => {
+			emit_error!(meta.input.span(), "unknown value");
+			quote! {}
+		}
+	}
+}
+
+pub fn get_parse_by_attr_macro(
+	_factory: &dyn AbstractValidationFactory,
+	meta: ParseNestedMeta<'_>,
+	field: &mut FieldAttributes,
+	attributes: &ValidationAttributes,
+	imports: &RefCell<ImportsSet>,
+) -> TokenStream {
+	if !attributes.payload {
+		emit_error!(meta.input.span(), "requires payload attribute");
+		return quote! {};
+	}
+
+	match meta {
+		m if m.path.is_ident("custom") => create_custom_parse(m.input, field),
+		m if m.path.is_ident("custom_with_context") => create_custom_with_context_parse(m.input, field, attributes),
+		m if m.path.is_ident("async_custom") => create_async_custom_parse(m.input, field, attributes),
+		m if m.path.is_ident("async_custom_with_context") => {
+			create_async_custom_with_context_parse(m.input, field, attributes)
+		}
+		m if m.path.is_ident("uuid") => create_uuid_parse(m.input, field, imports),
+		m if m.path.is_ident("time") => create_time_parse(m.input, field, imports),
+		m if m.path.is_ident("naive_time") => create_naive_time_parse(m.input, field, imports),
+		m if m.path.is_ident("naive_date") => create_naive_date_parse(m.input, field, imports),
+		m if m.path.is_ident("inline") => create_inline_parse(m.input, field),
 		_ => {
 			emit_error!(meta.input.span(), "unknown value");
 			quote! {}

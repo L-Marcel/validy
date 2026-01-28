@@ -1,4 +1,4 @@
-use crate::core::ValidationError;
+use ::validy::core::ValidationError;
 use chrono::{DateTime, NaiveDate, NaiveDateTime, TimeZone, Utc};
 use std::borrow::Cow;
 

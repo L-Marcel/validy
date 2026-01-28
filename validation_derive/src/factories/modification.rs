@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
@@ -9,7 +9,7 @@ use crate::{
 		},
 		core::AbstractValidationFactory,
 		extensions::modifications::get_modification_extensions,
-		utils::modifications::ModificationsCodeFactory,
+		others::modifications::ModificationsCodeFactory,
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -17,7 +17,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, parse::ParseStream};
+use syn::{Ident, parse::ParseStream};
 
 pub struct ModificationFactory<'a> {
 	struct_name: &'a Ident,
@@ -35,8 +35,6 @@ impl<'a> AbstractValidationFactory for ModificationFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		_: Vec<(Attribute, Option<Import>)>,
-		_: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -49,8 +47,7 @@ impl<'a> AbstractValidationFactory for ModificationFactory<'a> {
 		let extensions = get_modification_extensions(self.struct_name, attributes, imports);
 
 		let operations = code_factory.operations();
-		let commit = code_factory.commit();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
 		let boilerplates = get_modification_factory_boilerplates(struct_name);
 		let failure_mode = get_failure_mode_boilerplate(attributes);
@@ -68,7 +65,7 @@ impl<'a> AbstractValidationFactory for ModificationFactory<'a> {
   				  #(#operations)*
 
   				  if errors.is_empty() {
-  						#commit
+  						Ok(())
   				  } else {
       				Err(errors)
   				  }
@@ -86,29 +83,46 @@ impl<'a> AbstractValidationFactory for ModificationFactory<'a> {
 
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
-		field.increment_modifications();
-		let new_reference = field.get_reference();
 		let field_name = field.get_name();
 		let (field_type, _) = get_nested_type(input);
 
-		field.set_is_ref(false);
+		if field.is_ref() {
+			field.set_is_ref(true);
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(#reference) {
+  				let error = NestedValidationError::from(
+  					e,
+  					#field_name,
+  				);
 
-		#[rustfmt::skip]
-		let result = quote! {
-		  let mut #new_reference = #reference.clone();
-		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(&mut #new_reference) {
-				let error = NestedValidationError::from(
-					e,
-					#field_name,
-				);
+  			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
+  		  }
+  		};
 
-			  append_error(&mut errors, error.into(), failure_mode, #field_name);
-        if should_fail_fast(&errors, failure_mode, #field_name) {
-     			return Err(errors);
-     	  }
-		  }
-		};
+			result
+		} else {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+        let _ref = &mut #reference;
+  		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateAndModificate>::validate_and_modificate(_ref) {
+  				let error = NestedValidationError::from(
+  					e,
+  					#field_name,
+  				);
 
-		result
+  			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
+  		  }
+  		};
+
+			result
+		}
 	}
 }

@@ -46,8 +46,6 @@ pub fn create_async_custom_with_context_modification(
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();
-	field.increment_modifications();
-	let new_reference = field.get_reference();
 	let content = remove_parens(input);
 
 	let AsyncCustomWithContextArgs { function, params } = match content {
@@ -69,13 +67,13 @@ pub fn create_async_custom_with_context_modification(
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
+			let error = if can_continue(&errors, failure_mode, #field_name) {
         #function(#reference, #field_name, context, #(#extra_args),*).await
 			} else {
-			  (Default::default(), None)
+			  Ok(())
 			};
 
-			if let Some(e) = error {
+			if let Err(e) = error {
      	  append_error(&mut errors, e, failure_mode, #field_name);
      	  if should_fail_fast(&errors, failure_mode, #field_name) {
     		  return Err(errors);
@@ -88,13 +86,14 @@ pub fn create_async_custom_with_context_modification(
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
-        #function(&#reference, #field_name, context, #(#extra_args),*).await
+			let error = if can_continue(&errors, failure_mode, #field_name) {
+			  let _ref = &mut #reference;
+        #function(_ref, #field_name, context, #(#extra_args),*).await
 			} else {
-			  (Default::default(), None)
+			  Ok(())
 			};
 
-			if let Some(e) = error {
+			if let Err(e) = error {
      	  append_error(&mut errors, e, failure_mode, #field_name);
      	  if should_fail_fast(&errors, failure_mode, #field_name) {
     		  return Err(errors);

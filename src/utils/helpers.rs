@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{
+use ::validy::{
 	core::{ValidationError, ValidationErrors},
 	settings::FailureMode,
 };

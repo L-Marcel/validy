@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "validy"
-version = "1.1.13"
+version = "1.1.15"
 edition = "2024"
 description = "A powerful and flexible Rust library based on procedural macros for validation, modification, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with Axum. Inspired by Validator, Validify and Garde."
 license = "MIT"
@@ -14,10 +14,10 @@ repository = "https://github.com/L-Marcel/validy"
 readme = "readme.md"
 keywords = ["validation", "axum", "derive", "input-validation", "macros"]
 categories = ["web-programming", "data-structures", "parsing"]
-exclude = [".github/", ".gitignore", "expand.sh", "tests/"]
+exclude = [".github/", ".gitignore", "expand.sh", "tests/", "temp/"]
 
 [dependencies]
-validation_derive = { path = "validation_derive", version = "1.1.4", optional = true }
+validation_derive = { path = "validation_derive", version = "1.1.8", optional = true }
 email_address = { version = "0.2.9", optional = true }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 async-trait = "0.1.89"
@@ -34,15 +34,17 @@ uuid = { version = "1.19.0", optional = true }
 [features]
 all = [
   "derive", "macro_rules", "macro_rules_assertions", "validation",
-  "modification", "email", "pattern", "ip", "time", "axum", "axum_multipart",
+  "modification", "parsing", "email", "pattern", "ip", "time", "axum", "axum_multipart",
+  "axum_multipart_field_data",
   "uuid"
 ]
-default = ["derive", "macro_rules", "validation", "modification"]
+default = ["derive", "macro_rules", "validation", "modification", "parsing"]
 macro_rules = []
 macro_rules_assertions = ["dep:pretty_assertions"]
 derive = ["dep:validation_derive", "dep:serde"]
 validation = []
 modification = ["dep:heck"]
+parsing = []
 email = ["dep:email_address"]
 pattern = ["dep:moka", "dep:regex"]
 ip = []
@@ -50,6 +52,7 @@ time = ["dep:chrono"]
 uuid = ["dep:uuid"]
 axum = ["dep:axum", "derive", "validation_derive/axum"]
 axum_multipart = ["axum", "dep:axum_typed_multipart", "validation_derive/axum_multipart"]
+axum_multipart_field_data = ["axum_multipart", "pattern"]
 
 [dev-dependencies]
 futures-util = "0.3.31"

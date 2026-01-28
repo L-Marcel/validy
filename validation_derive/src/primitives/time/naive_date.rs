@@ -85,7 +85,8 @@ pub fn create_naive_date(
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_naive_date_fn(&#reference, #format, #field_name, #code, #message) {
+		  let _ref = &#reference;
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_naive_date_fn(_ref, #format, #field_name, #code, #message) {
         append_error(&mut errors, e, failure_mode, #field_name);
         if should_fail_fast(&errors, failure_mode, #field_name) {
      			return Err(errors);

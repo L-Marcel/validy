@@ -17,15 +17,15 @@ use validy::core::{Validate, ValidationError};
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
-#[validate(asynchronous, context = Arc<dyn MockedService>, modify, axum)]
+#[validate(asynchronous, modificate, axum)]
 pub struct TestDTO {
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
 	pub name: String,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom_with_context(validate_unique_email))]
+	#[validate(async_custom(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -33,14 +33,14 @@ pub struct TestDTO {
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
 	pub password: String,
 
-	#[modify(inline(|_| 3))]
+	#[modificate(inline(|x: &mut u16| *x = 3))]
 	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
-	#[modify(snake_case)]
-	#[modify(custom(modify_tag))]
+	#[modificate(snake_case)]
+	#[modificate(custom(modificate_tag))]
 	pub tag: Option<String>,
 
 	#[special(nested(RoleDTO))]
@@ -48,36 +48,31 @@ pub struct TestDTO {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default, Validate)]
-#[validate(modify, axum)]
+#[validate(modificate, axum)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
  	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
     validate(inline(|x: &u32| *x > 1)),
- 	  modify(inline(|x| x + 1))
+ 	  modificate(inline(|x: &mut u32| *x += 1))
 	))]
 	pub permissions: Vec<u32>,
 
 	#[special(for_each(
 	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
 	  validate(inline(|x: &u32| *x > 1)),
-		modify(inline(|x| x + 1))
+		modificate(inline(|x: &mut u32| *x += 1))
 	))]
 	pub alt_permissions: Vec<u32>,
 }
 
-fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	(tag.to_string() + "_modified", None)
+fn modificate_tag(tag: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*tag = (tag.to_string() + "_modified").to_string();
+	Ok(())
 }
 
-async fn validate_unique_email(
-	email: &str,
-	field_name: &str,
-	service: &Arc<dyn MockedService>,
-) -> Result<(), ValidationError> {
-	let result = service.email_exists(email).await;
-
-	if result {
+async fn validate_unique_email(email: &str, field_name: &str) -> Result<(), ValidationError> {
+	if email == "test@gmail.com" {
 		Err(ValidationError::builder()
 			.with_field(field_name.to_string())
 			.as_simple("unique")

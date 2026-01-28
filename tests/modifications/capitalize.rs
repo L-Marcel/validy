@@ -5,17 +5,17 @@ use validy::{assert_modification, assert_validation};
 
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
-#[validate(modify)]
+#[validate(modificate)]
 struct Test {
-	#[modify(capitalize)]
-	#[modify(capitalize)]
+	#[modificate(capitalize)]
+	#[modificate(capitalize)]
 	pub a: String,
-	#[modify(capitalize)]
+	#[modificate(capitalize)]
 	pub b: Option<String>,
 }
 
 #[test]
-fn should_modify_capitalizes() {
+fn should_modificate_capitalizes() {
 	let cases = [
 		("", ""),
 		("hello", "Hello"),

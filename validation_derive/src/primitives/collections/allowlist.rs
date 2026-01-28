@@ -80,30 +80,60 @@ pub fn create_allowlist(input: ParseStream, field: &mut FieldAttributes, imports
 
 	match mode {
 		Some(mode) if mode.value() == "SINGLE" => {
-			#[rustfmt::skip]
-			let result = quote! {
-				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn([#reference.clone()], #items, #field_name, #code, #message) {
-					append_error(&mut errors, e, failure_mode, #field_name);
-					if should_fail_fast(&errors, failure_mode, #field_name) {
-					  return Err(errors);
-					};
-			  }
-			};
+			if field.is_ref() {
+				#[rustfmt::skip]
+  			let result = quote! {
+  				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn(::std::iter::once(#reference), #items, #field_name, #code, #message) {
+  					append_error(&mut errors, e, failure_mode, #field_name);
+  					if should_fail_fast(&errors, failure_mode, #field_name) {
+  					  return Err(errors);
+  					};
+  			  }
+  			};
 
-			result
+				result
+			} else {
+				#[rustfmt::skip]
+  			let result = quote! {
+          let _ref = &#reference;
+  				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn(::std::iter::once(_ref), #items, #field_name, #code, #message) {
+  					append_error(&mut errors, e, failure_mode, #field_name);
+  					if should_fail_fast(&errors, failure_mode, #field_name) {
+  					  return Err(errors);
+  					};
+  			  }
+  			};
+
+				result
+			}
 		}
 		Some(mode) if mode.value() == "COLLECTION" => {
-			#[rustfmt::skip]
-			let result = quote! {
-				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn(#reference.clone(), #items, #field_name, #code, #message) {
-			    append_error(&mut errors, e, failure_mode, #field_name);
-					if should_fail_fast(&errors, failure_mode, #field_name) {
-						return Err(errors);
-				  }
-			  }
-			};
+			if field.is_ref() {
+				#[rustfmt::skip]
+  			let result = quote! {
+  				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn(#reference.iter(), #items, #field_name, #code, #message) {
+  					append_error(&mut errors, e, failure_mode, #field_name);
+  					if should_fail_fast(&errors, failure_mode, #field_name) {
+  					  return Err(errors);
+  					};
+  			  }
+  			};
 
-			result
+				result
+			} else {
+				#[rustfmt::skip]
+  			let result = quote! {
+          let _ref = &#reference;
+  				if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_allowlist_fn(_ref.iter(), #items, #field_name, #code, #message) {
+  					append_error(&mut errors, e, failure_mode, #field_name);
+  					if should_fail_fast(&errors, failure_mode, #field_name) {
+  					  return Err(errors);
+  					};
+  			  }
+  			};
+
+				result
+			}
 		}
 		Some(_) => {
 			emit_error!(input.span(), "available modes are SINGLE and COLLECTION");

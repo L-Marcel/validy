@@ -4,7 +4,9 @@ set -e
 mkdir -p temp
 mkdir -p temp/validations
 mkdir -p temp/modifications
+mkdir -p temp/parsings
 mkdir -p temp/axum
+mkdir -p temp/axum/multipart
 
 cargo expand --all-features --test mod validations::allowlist >> temp/validations/allowlist.rs || true
 cargo expand --all-features --test mod validations::blocklist >> temp/validations/blocklist.rs || true
@@ -63,10 +65,10 @@ cargo expand --all-features --test mod axum::asynchronous_payload >> temp/axum/a
 cargo expand --all-features --test mod axum::asynchronous_payload_with_context >> temp/axum/asynchronous_payload_with_context.rs || true
 cargo expand --all-features --test mod axum::payload >> temp/axum/payload.rs || true
 cargo expand --all-features --test mod axum::payload_with_context >> temp/axum/payload_with_context.rs || true
-cargo expand --all-features --test mod axum::asynchronous_modify >> temp/axum/asynchronous_modify.rs || true
-cargo expand --all-features --test mod axum::asynchronous_modify_with_context >> temp/axum/asynchronous_modify_with_context.rs || true
-cargo expand --all-features --test mod axum::modify >> temp/axum/modify.rs || true
-cargo expand --all-features --test mod axum::modify_with_context >> temp/axum/modify_with_context.rs || true
+cargo expand --all-features --test mod axum::asynchronous_modificate >> temp/axum/asynchronous_modificate.rs || true
+cargo expand --all-features --test mod axum::asynchronous_modificate_with_context >> temp/axum/asynchronous_modificate_with_context.rs || true
+cargo expand --all-features --test mod axum::modificate >> temp/axum/modificate.rs || true
+cargo expand --all-features --test mod axum::modificate_with_context >> temp/axum/modificate_with_context.rs || true
 cargo expand --all-features --test mod axum::asynchronous >> temp/axum/asynchronous_.rs || true
 cargo expand --all-features --test mod axum::asynchronous_with_context >> temp/axum/asynchronous_with_context.rs || true
 cargo expand --all-features --test mod axum::default >> temp/axum/default.rs || true
@@ -77,13 +79,15 @@ cargo expand --all-features --test mod axum::multipart::asynchronous_payload >> 
 cargo expand --all-features --test mod axum::multipart::asynchronous_payload_with_context >> temp/axum/multipart/asynchronous_payload_with_context.rs || true
 cargo expand --all-features --test mod axum::multipart::payload >> temp/axum/multipart/payload.rs || true
 cargo expand --all-features --test mod axum::multipart::payload_with_context >> temp/axum/multipart/payload_with_context.rs || true
-cargo expand --all-features --test mod axum::multipart::asynchronous_modify >> temp/axum/multipart/asynchronous_modify.rs || true
-cargo expand --all-features --test mod axum::multipart::asynchronous_modify_with_context >> temp/axum/multipart/asynchronous_modify_with_context.rs || true
-cargo expand --all-features --test mod axum::multipart::modify >> temp/axum/multipart/modify.rs || true
-cargo expand --all-features --test mod axum::multipart::modify_with_context >> temp/axum/multipart/modify_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_modificate >> temp/axum/multipart/asynchronous_modificate.rs || true
+cargo expand --all-features --test mod axum::multipart::asynchronous_modificate_with_context >> temp/axum/multipart/asynchronous_modificate_with_context.rs || true
+cargo expand --all-features --test mod axum::multipart::modificate >> temp/axum/multipart/modificate.rs || true
+cargo expand --all-features --test mod axum::multipart::modificate_with_context >> temp/axum/multipart/modificate_with_context.rs || true
 cargo expand --all-features --test mod axum::multipart::asynchronous >> temp/axum/multipart/asynchronous_.rs || true
 cargo expand --all-features --test mod axum::multipart::asynchronous_with_context >> temp/axum/multipart/asynchronous_with_context.rs || true
 cargo expand --all-features --test mod axum::multipart::default >> temp/axum/multipart/default.rs || true
 cargo expand --all-features --test mod axum::multipart::with_context >> temp/axum/multipart/with_context.rs || true
 
 cargo check --all-features --test mod
+
+cargo expand --all-features --test mod quick >> temp/quick.rs || true

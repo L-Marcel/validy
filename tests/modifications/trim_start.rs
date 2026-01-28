@@ -5,17 +5,17 @@ use validy::{assert_modification, assert_validation};
 
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
-#[validate(modify)]
+#[validate(modificate)]
 struct Test {
-	#[modify(trim_start)]
-	#[modify(trim_start)]
+	#[modificate(trim_start)]
+	#[modificate(trim_start)]
 	pub a: String,
-	#[modify(trim_start)]
+	#[modificate(trim_start)]
 	pub b: Option<String>,
 }
 
 #[test]
-fn should_modify_trims_start() {
+fn should_modificate_trims_start() {
 	let cases = [
 		("", ""),
 		(" abc", "abc"),

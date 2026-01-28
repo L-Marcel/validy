@@ -11,7 +11,6 @@ pub struct FieldAttributes {
 	initial_type: Option<Type>,
 	required_args: RequiredArgs,
 	payload: bool,
-	modification: bool,
 	is_ref: bool,
 	operations: Vec<TokenStream>,
 	name: Option<Ident>,
@@ -29,7 +28,6 @@ impl FieldAttributes {
 			initial_type: None,
 			required_args: RequiredArgs::default(),
 			payload: attributes.payload,
-			modification: attributes.modify,
 			is_ref: false,
 			operations: Vec::new(),
 			name: Some(name.clone()),
@@ -47,7 +45,6 @@ impl FieldAttributes {
 			initial_type: None,
 			required_args: RequiredArgs::default(),
 			payload: attributes.payload,
-			modification: attributes.modify,
 			is_ref: false,
 			operations: Vec::new(),
 			name: None,
@@ -67,102 +64,18 @@ impl FieldAttributes {
 
 	pub fn is_ref(&self) -> bool {
 		let operations_is_empty = self.operations.iter().all(|operation| operation.is_empty());
-		self.is_ref || (operations_is_empty && self.scopes == 0 && (self.is_payload() || self.is_option()))
+		self.is_ref || (operations_is_empty && self.scopes == 0 && !self.is_payload() && self.is_option())
 	}
 
-	pub fn get_operations(&mut self) -> TokenStream {
+	pub fn get_required_args(&self) -> RequiredArgs {
+		self.required_args.clone()
+	}
+
+	pub fn get_operations(&mut self) -> Vec<TokenStream> {
 		if self.ignore {
-			return quote! {};
-		}
-
-		let name = match (&self.name, &self.index) {
-			(Some(name), _) => name.to_string(),
-			(_, Some(index)) => index.index.to_string(),
-			_ => panic!("needs a field name or index"),
-		};
-
-		let unwrapped_final_name = format!("unwrapped_{}", name);
-		let unwrapped = Ident::new(&unwrapped_final_name, Span::call_site());
-
-		if self.payload {
-			let field_name = &self.get_name();
-			let wrapper_final_type = &self.get_wrapper_final_type();
-			let reference = &self.get_reference();
-			self.increment_modifications();
-			let operations = &self.operations;
-			let new_reference = &self.get_reference();
-			let wrapper_reference = &self.get_wrapper_reference();
-
-			let update = if self.is_ref() {
-				quote! { #new_reference = Some(#reference.clone()); }
-			} else {
-				quote! { #new_reference = Some(#reference); }
-			};
-
-			if self.is_option() {
-				quote! {
-					let mut #new_reference: #wrapper_final_type = None;
-					if let Some(#unwrapped) = #wrapper_reference.as_ref() {
-						#(#operations)*
-						#update
-					}
-				}
-			} else {
-				let code = &self.required_args.code;
-				let message = &self.required_args.message;
-
-				quote! {
-				  let mut #new_reference: #wrapper_final_type = None;
-				  if let Some(#unwrapped) = #wrapper_reference.as_ref() {
-						#(#operations)*
-						#update
-					} else {
-					  let error = ValidationError::builder()
-							.with_field(#field_name)
-							.as_simple(#code)
-							.with_message(#message)
-							.build();
-
-						append_error(&mut errors, error.into(), failure_mode, #field_name);
-					}
-				}
-			}
-		} else if self.is_option() {
-			let original_reference = self.get_original_reference();
-
-			if self.modification {
-				let initial_type = self.get_initial_type();
-				let reference = &self.get_reference();
-				self.increment_modifications();
-				let operations = &self.operations;
-				let new_reference = self.get_reference();
-
-				let update = if self.is_ref() {
-					quote! { #new_reference = Some(#reference.clone()); }
-				} else {
-					quote! { #new_reference = Some(#reference); }
-				};
-
-				quote! {
-				  let mut #new_reference: #initial_type = None;
-					if let Some(#unwrapped) = #original_reference.as_ref() {
-						#(#operations)*
-						#update
-					}
-				}
-			} else {
-				let operations = &self.operations;
-				quote! {
-					if let Some(#unwrapped) = #original_reference.as_ref() {
-						#(#operations)*
-					}
-				}
-			}
+			Vec::new()
 		} else {
-			let operations = &self.operations;
-			quote! {
-			  #(#operations)*
-			}
+			self.operations.clone()
 		}
 	}
 
@@ -182,10 +95,6 @@ impl FieldAttributes {
 		}
 
 		false
-	}
-
-	pub fn get_ignore(&self) -> bool {
-		self.ignore
 	}
 
 	pub fn set_ignore(&mut self, ignore: bool) {
@@ -251,10 +160,6 @@ impl FieldAttributes {
 		}
 	}
 
-	pub fn get_modifications(&self) -> usize {
-		self.modifications
-	}
-
 	pub fn increment_modifications(&mut self) {
 		self.modifications += 1;
 	}
@@ -285,6 +190,17 @@ impl FieldAttributes {
 		};
 
 		quote! { self.#suffix }
+	}
+
+	pub fn get_unwrapped_reference(&self) -> Ident {
+		let name = match (&self.name, &self.index) {
+			(Some(name), _) => name.to_string(),
+			(_, Some(index)) => index.index.to_string(),
+			_ => panic!("needs a field name or index"),
+		};
+
+		let unwrapped_reference = format!("unwrapped_{}", name);
+		Ident::new(&unwrapped_reference, Span::call_site())
 	}
 
 	pub fn get_reference(&self) -> TokenStream {

@@ -5,17 +5,17 @@ use validy::{assert_modification, assert_validation};
 
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
-#[validate(modify)]
+#[validate(modificate)]
 struct Test {
-	#[modify(lower_camel_case)]
-	#[modify(lower_camel_case)]
+	#[modificate(lower_camel_case)]
+	#[modificate(lower_camel_case)]
 	pub a: String,
-	#[modify(lower_camel_case)]
+	#[modificate(lower_camel_case)]
 	pub b: Option<String>,
 }
 
 #[test]
-fn should_modify_lower_camel_cases() {
+fn should_modificate_lower_camel_cases() {
 	let cases = [
 		("", ""),
 		("hello", "hello"),

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
@@ -9,7 +9,7 @@ use crate::{
 		},
 		core::AbstractValidationFactory,
 		extensions::defaults::get_default_with_context_extensions,
-		utils::defaults::DefaultsCodeFactory,
+		others::defaults::DefaultsCodeFactory,
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -17,7 +17,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Type, parse::ParseStream};
+use syn::{Ident, Type, parse::ParseStream};
 
 pub struct ValidationWithContextFactory<'a> {
 	struct_name: &'a Ident,
@@ -39,8 +39,6 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		_: Vec<(Attribute, Option<Import>)>,
-		_: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -54,7 +52,7 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 		let extensions = get_default_with_context_extensions(self.struct_name, attributes, self.context_type, imports);
 
 		let operations = code_factory.operations();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
 		let boilerplates = get_default_with_context_factory_boilerplates(struct_name, context_type);
 		let failure_mode = get_failure_mode_boilerplate(attributes);
@@ -123,7 +121,8 @@ impl<'a> AbstractValidationFactory for ValidationWithContextFactory<'a> {
 			field.set_is_ref(false);
 			#[rustfmt::skip]
 			let result = quote! {
-			  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateWithContext<#context_type>>::validate_with_context(&#reference, &context) {
+			  let _ref = &#reference;
+			  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as ValidateWithContext<#context_type>>::validate_with_context(_ref, &context) {
 					let error = NestedValidationError::from(
 						e,
 						#field_name,

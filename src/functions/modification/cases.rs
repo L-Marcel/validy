@@ -1,39 +1,39 @@
-pub fn capitalize(value: &str) -> String {
+pub fn capitalize(value: &mut String) {
 	use heck::ToTitleCase;
-	value.to_title_case()
+	*value = value.to_title_case();
 }
 
-pub fn camel_case(value: &str) -> String {
+pub fn camel_case(value: &mut String) {
 	use heck::ToUpperCamelCase;
-	value.to_upper_camel_case()
+	*value = value.to_upper_camel_case();
 }
 
-pub fn lower_camel_case(value: &str) -> String {
+pub fn lower_camel_case(value: &mut String) {
 	use heck::ToLowerCamelCase;
-	value.to_lower_camel_case()
+	*value = value.to_lower_camel_case()
 }
 
-pub fn snake_case(value: &str) -> String {
+pub fn snake_case(value: &mut String) {
 	use heck::ToSnakeCase;
-	value.to_snake_case()
+	*value = value.to_snake_case()
 }
 
-pub fn shouty_snake_case(value: &str) -> String {
+pub fn shouty_snake_case(value: &mut String) {
 	use heck::ToShoutySnakeCase;
-	value.to_shouty_snake_case()
+	*value = value.to_shouty_snake_case()
 }
 
-pub fn kebab_case(value: &str) -> String {
+pub fn kebab_case(value: &mut String) {
 	use heck::ToKebabCase;
-	value.to_kebab_case()
+	*value = value.to_kebab_case()
 }
 
-pub fn shouty_kebab_case(value: &str) -> String {
+pub fn shouty_kebab_case(value: &mut String) {
 	use heck::ToShoutyKebabCase;
-	value.to_shouty_kebab_case()
+	*value = value.to_shouty_kebab_case()
 }
 
-pub fn train_case(value: &str) -> String {
+pub fn train_case(value: &mut String) {
 	use heck::ToTrainCase;
-	value.to_train_case()
+	*value = value.to_train_case();
 }

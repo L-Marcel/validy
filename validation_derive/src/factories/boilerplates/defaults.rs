@@ -2,13 +2,24 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Ident, Type};
 
-use crate::factories::boilerplates::modifications::{
-	get_async_modification_boilerplate, get_async_modification_with_context_boilerplate, get_modification_boilerplate,
-	get_modification_with_context_boilerplate,
+use crate::factories::boilerplates::{
+	modifications::{
+		get_async_modification_boilerplate, get_async_modification_with_context_boilerplate,
+		get_modification_boilerplate, get_modification_with_context_boilerplate,
+	},
+	payloads::{
+		get_async_payload_boilerplate, get_async_payload_with_context_boilerplate, get_payload_boilerplate,
+		get_payload_with_context_boilerplate,
+	},
 };
 
 pub fn get_default_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 	let method = quote! { self.validate() };
+	let payload_method = quote! {
+	  wrapper.validate()?;
+		Ok(wrapper)
+	};
+
 	let boilerplates = vec![
 		get_default_with_context_boilerplate(struct_name, None, &method),
 		get_async_default_boilerplate(struct_name, &method),
@@ -17,6 +28,10 @@ pub fn get_default_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 		get_modification_with_context_boilerplate(struct_name, None, &method),
 		get_async_modification_boilerplate(struct_name, &method),
 		get_async_modification_with_context_boilerplate(struct_name, None, &method),
+		get_payload_boilerplate(struct_name, struct_name, &payload_method),
+		get_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
+		get_async_payload_boilerplate(struct_name, struct_name, &payload_method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
 	];
 
 	#[rustfmt::skip]
@@ -29,10 +44,17 @@ pub fn get_default_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 
 pub fn get_default_with_context_factory_boilerplates(struct_name: &Ident, context_type: &Type) -> TokenStream {
 	let method = quote! { self.validate_with_context(context) };
+	let payload_method = quote! {
+	  wrapper.validate_with_context(context)?;
+		Ok(wrapper)
+	};
+
 	let boilerplates = vec![
 		get_async_default_with_context_boilerplate(struct_name, Some(context_type), &method),
 		get_modification_with_context_boilerplate(struct_name, Some(context_type), &method),
 		get_async_modification_with_context_boilerplate(struct_name, Some(context_type), &method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, Some(context_type), &payload_method),
+		get_payload_with_context_boilerplate(struct_name, struct_name, Some(context_type), &payload_method),
 	];
 
 	#[rustfmt::skip]
@@ -45,10 +67,17 @@ pub fn get_default_with_context_factory_boilerplates(struct_name: &Ident, contex
 
 pub fn get_async_default_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 	let method = quote! { self.async_validate().await };
+	let payload_method = quote! {
+	  wrapper.async_validate().await?;
+		Ok(wrapper)
+	};
+
 	let boilerplates = vec![
 		get_async_default_with_context_boilerplate(struct_name, None, &method),
 		get_async_modification_boilerplate(struct_name, &method),
 		get_async_modification_with_context_boilerplate(struct_name, None, &method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
+		get_async_payload_boilerplate(struct_name, struct_name, &payload_method),
 	];
 
 	#[rustfmt::skip]
@@ -61,11 +90,15 @@ pub fn get_async_default_factory_boilerplates(struct_name: &Ident) -> TokenStrea
 
 pub fn get_async_default_factory_with_context_boilerplates(struct_name: &Ident, context_type: &Type) -> TokenStream {
 	let method = quote! { self.async_validate_with_context(context).await };
-	let boilerplates = vec![get_async_modification_with_context_boilerplate(
-		struct_name,
-		Some(context_type),
-		&method,
-	)];
+	let payload_method = quote! {
+	  wrapper.async_validate_with_context(context).await?;
+		Ok(wrapper)
+	};
+
+	let boilerplates = vec![
+		get_async_modification_with_context_boilerplate(struct_name, Some(context_type), &method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, Some(context_type), &payload_method),
+	];
 
 	#[rustfmt::skip]
 	let result = quote! {

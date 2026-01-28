@@ -6,15 +6,15 @@ use validy::{assert_errors, assert_validation};
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
 struct Test {
-	#[validate(inline(|x| x, []))]
+	#[validate(inline(|x: &bool| *x, []))]
 	#[validate(inline(|x: &bool, b: &Option<bool>| b.is_some_and(|c| c) || *x, [&self.b]))]
 	pub a: bool,
-	#[validate(inline(|x| x, [], "custom message"))]
+	#[validate(inline(|x: &bool| *x, [], "custom message"))]
 	#[validate(inline(|x: &bool, a: &bool| *a && *x, [&self.a], "custom message"))]
 	pub b: Option<bool>,
-	#[validate(inline(|x| x, [], code = "custom_code"))]
+	#[validate(inline(|x: &bool| *x, [], code = "custom_code"))]
 	pub c: Option<bool>,
-	#[validate(inline(|x| x, [], "custom message", "custom_code"))]
+	#[validate(inline(|x: &bool| *x, [], "custom message", "custom_code"))]
 	pub d: Option<bool>,
 }
 

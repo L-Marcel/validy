@@ -67,7 +67,7 @@ pub fn get_payload_with_context_boilerplate(
 	let result = match context_type {
     Some(context_type) => quote! {
    	  impl ValidateAndParseWithContext<#wrapper_ident, #context_type> for #struct_name {
-       	fn validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+       	fn validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
   			  #method
   		  }
   	  }
@@ -75,17 +75,37 @@ pub fn get_payload_with_context_boilerplate(
      impl SpecificValidateAndParseWithContext for #struct_name {
         type Wrapper = #wrapper_ident;
         type Context = #context_type;
-        fn specific_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+        fn specific_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
           #method
         }
   	  }
     },
     None => quote! {
   	  impl<C> ValidateAndParseWithContext<#wrapper_ident, C> for #struct_name {
-  			fn validate_and_parse_with_context(wrapper: &#wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
+  			fn validate_and_parse_with_context(mut wrapper: #wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
   			  #method
   		  }
   	  }
+    }
+	};
+
+	result
+}
+
+pub fn get_payload_boilerplate(struct_name: &Ident, wrapper_ident: &Ident, method: &TokenStream) -> TokenStream {
+	#[rustfmt::skip]
+	let result = quote! {
+    impl ValidateAndParse<#wrapper_ident> for #struct_name {
+      fn validate_and_parse(mut wrapper: #wrapper_ident) -> Result<Self, ValidationErrors> {
+       	#method
+      }
+    }
+
+    impl SpecificValidateAndParse for #struct_name {
+      type Wrapper = #wrapper_ident;
+      fn specific_validate_and_parse(mut wrapper: #wrapper_ident) -> Result<Self, ValidationErrors> {
+       	#method
+      }
     }
 	};
 
@@ -97,7 +117,7 @@ pub fn get_async_payload_boilerplate(struct_name: &Ident, wrapper_ident: &Ident,
 	let result = quote! {
     #[async_trait]
     impl AsyncValidateAndParse<#wrapper_ident> for #struct_name {
-      async fn async_validate_and_parse(wrapper: &#wrapper_ident) -> Result<Self, ValidationErrors> {
+      async fn async_validate_and_parse(mut wrapper: #wrapper_ident) -> Result<Self, ValidationErrors> {
        	#method
       }
     }
@@ -105,7 +125,7 @@ pub fn get_async_payload_boilerplate(struct_name: &Ident, wrapper_ident: &Ident,
     #[async_trait]
     impl SpecificAsyncValidateAndParse for #struct_name {
       type Wrapper = #wrapper_ident;
-      async fn specific_async_validate_and_parse(wrapper: &#wrapper_ident) -> Result<Self, ValidationErrors> {
+      async fn specific_async_validate_and_parse(mut wrapper: #wrapper_ident) -> Result<Self, ValidationErrors> {
        	#method
       }
     }
@@ -125,7 +145,7 @@ pub fn get_async_payload_with_context_boilerplate(
     Some(context_type) => quote! {
       #[async_trait]
      	impl AsyncValidateAndParseWithContext<#wrapper_ident, #context_type> for #struct_name {
-     	  async fn async_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+     	  async fn async_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
          	#method
      		}
       }
@@ -134,7 +154,7 @@ pub fn get_async_payload_with_context_boilerplate(
      	impl SpecificAsyncValidateAndParseWithContext for #struct_name {
         type Wrapper = #wrapper_ident;
         type Context = #context_type;
-     	  async fn specific_async_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+     	  async fn specific_async_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
          	#method
      		}
       }
@@ -142,7 +162,7 @@ pub fn get_async_payload_with_context_boilerplate(
     None => quote! {
      	#[async_trait]
      	impl<C> AsyncValidateAndParseWithContext<#wrapper_ident, C> for #struct_name {
-     	  async fn async_validate_and_parse_with_context(wrapper: &#wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
+     	  async fn async_validate_and_parse_with_context(mut wrapper: #wrapper_ident, _: &C) -> Result<Self, ValidationErrors> {
          	#method
      		}
       }

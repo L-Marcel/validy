@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashSet, VecDeque};
 
 use serde::Deserialize;
 use validy::core::Validate;
@@ -21,19 +21,16 @@ struct Test {
 	#[validate(blocklist("COLLECTION", ["a", "b"]))]
 	#[validate(blocklist("COLLECTION", ["a", "b"]))]
 	pub e: Vec<String>,
-	#[validate(blocklist("COLLECTION", [("a".to_string(), "c".to_string()), ("b".to_string(), "d".to_string())], "custom message"))]
-	#[validate(blocklist("COLLECTION", [("a".to_string(), "c".to_string()), ("b".to_string(), "d".to_string())], "custom message"))]
-	pub f: Option<HashMap<String, String>>,
 	#[validate(blocklist("COLLECTION", ["a", "b"], code = "custom_code"))]
-	pub g: Option<HashSet<String>>,
+	pub f: Option<HashSet<String>>,
 	#[validate(blocklist("COLLECTION", ["a", "b"], "custom message", "custom_code"))]
-	pub h: Option<VecDeque<String>>,
-	#[validate(blocklist("SINGLE", [1, 4], "custom message", "custom_code"))]
-	#[validate(blocklist("SINGLE", [1, 4], "custom message", "custom_code"))]
-	pub i: u8,
-	#[validate(blocklist("SINGLE", [1, 4], "custom message", "custom_code"))]
-	#[validate(blocklist("SINGLE", [1, 4], "custom message", "custom_code"))]
-	pub j: Option<u8>,
+	pub g: Option<VecDeque<String>>,
+	#[validate(blocklist("SINGLE", [&1, &4], "custom message", "custom_code"))]
+	#[validate(blocklist("SINGLE", [&1, &4], "custom message", "custom_code"))]
+	pub h: u8,
+	#[validate(blocklist("SINGLE", [&1, &4], "custom message", "custom_code"))]
+	#[validate(blocklist("SINGLE", [&1, &4], "custom message", "custom_code"))]
+	pub i: Option<u8>,
 }
 
 #[test]
@@ -45,18 +42,6 @@ fn should_validate_blocklists() {
 			(vec!["a".into()], false),
 			(vec!["b".into(), "a".into()], false),
 			(vec!["d".into(), "c".into()], true),
-		],
-		[
-			(HashMap::<String, String>::new(), true),
-			(HashMap::from([("a".into(), "c".into())]), false),
-			(
-				HashMap::from([("a".into(), "d".into()), ("a".into(), "a".into())]),
-				true,
-			),
-			(
-				HashMap::from([("a".into(), "c".into()), ("b".into(), "d".into())]),
-				false,
-			),
 		],
 		[
 			(HashSet::new(), true),
@@ -150,7 +135,7 @@ fn should_validate_blocklists() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"f" => ("blocklist", "custom message"),
+				"f" => ("custom_code", "has item inside blocklist"),
 			});
 		}
 	}
@@ -164,14 +149,14 @@ fn should_validate_blocklists() {
 			assert_validation!(result, test);
 		} else {
 			assert_errors!(result, test, {
-				"g" => ("custom_code", "has item inside blocklist"),
+				"g" => ("custom_code", "custom message"),
 			});
 		}
 	}
 
 	test.g = None;
 	for (case, is_valid) in cases.4.iter() {
-		test.h = Some(case.clone());
+		test.h = *case;
 		let result = test.validate();
 
 		if *is_valid {
@@ -183,9 +168,8 @@ fn should_validate_blocklists() {
 		}
 	}
 
-	test.h = None;
-	for (case, is_valid) in cases.5.iter() {
-		test.i = *case;
+	for (case, is_valid) in cases.4.iter() {
+		test.i = Some(*case);
 		let result = test.validate();
 
 		if *is_valid {
@@ -193,19 +177,6 @@ fn should_validate_blocklists() {
 		} else {
 			assert_errors!(result, test, {
 				"i" => ("custom_code", "custom message"),
-			});
-		}
-	}
-
-	for (case, is_valid) in cases.5.iter() {
-		test.j = Some(*case);
-		let result = test.validate();
-
-		if *is_valid {
-			assert_validation!(result, test);
-		} else {
-			assert_errors!(result, test, {
-				"j" => ("custom_code", "custom message"),
 			});
 		}
 	}

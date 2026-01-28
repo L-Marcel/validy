@@ -2,17 +2,18 @@
 
 *More than just validation.*
 
+[![Crates.io](https://img.shields.io/crates/v/validy.svg)](https://crates.io/crates/validy)
 [![Status](https://github.com/L-Marcel/validy/actions/workflows/ci.yml/badge.svg)](https://github.com/L-Marcel/validy/actions/workflows/ci.yml)
 
 A powerful and flexible Rust library based on procedural macros for `validation`, `modification`, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with `Axum`. Inspired by `Validator`, `Validify`, and `Garde`.
 
 - [📝 Installation](#-installation)
 - [🚀 Quick Start](#-quick-start)
-- [🔎 Validation Flow](#-validation-flow)
-  - [Implementations](#implementations)
-- [🎯 Work In Progress](#-work-in-progress)
+- [📓 Glossary](#-glossary)
+- [🔎 About Implementations](#-about-implementations)
 - [🔌 Axum Integration](#-axum-integration)
   - [Customizing the failure `status code`](#customizing-the-failure-status-code)
+  - [Multipart support](#multipart-support)
 - [🧩 Manual Usage](#-manual-usage)
   - [Available traits](#available-traits)
 - [🚩 Feature Flags](#-feature-flags)
@@ -22,217 +23,174 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [For `collection` or `single` fields](#for-collection-or-single-fields)
   - [For `numbers` fields](#for-numbers-fields)
   - [For `date` or `time` fields](#for-date-or-time-fields)
+  - [For multipart `field data` fields](#for-multipart-field-data-fields)
   - [Custom rules](#custom-rules)
 - [🔨 Modification Rules](#-modification-rules)
   - [For `string` fields](#for-string-fields-1)
-  - [For `date` or `time` fields](#for-date-or-time-fields-1)
   - [Custom rules](#custom-rules-1)
-- [🔧 Special Rules](#-special-rules)
+- [🔧 Parsing Rules](#-parsing-rules)
+  - [For `uuid` fields](#for-uuid-fields)
+  - [For `date` or `time` fields](#for-date-or-time-fields-1)
+  - [Custom rules](#custom-rules-2)
+- [🔮 Special Rules](#-special-rules)
+- [📨 Wrappers](#-wrappers)
 - [📐 Useful Macros](#-useful-macros)
   - [For `error` handling](#for-error-handling)
   - [For `test` assertions](#for-test-assertions)
+- [💝 Complete Example](#-complete-example)
 - [📁 More Examples](#-more-examples)
+- [🎯 Work In Progress](#-work-in-progress)
 - [🎁 For Developers](#-for-developers)
 
 ## 📝 Installation
 
 Add with Cargo:
 
-```
+```bash
 cargo add validy --features axum,email
 ```
 
 ## 🚀 Quick Start
 
-The main entry point is the `#[derive(Validate)]` macro. It allows you to configure validations, modifications, and payload behaviors directly on your struct.
+The main entry point is the `#[derive(Validate)]` macro. It allows you to configure validations, modifications and parses behaviors directly on your struct. You also can use `#[wrapper_derive(...)]` to apply derive macros on [📨 Wrappers](#-wrappers).
 
 ```rust
-use crate::core::{errors::Error, services::user::UserService};
-//-------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^ This is my validation context.
-// You can use your own type when you need to pass a context.
-use serde::Deserialize;
-use std::sync::Arc;
-use validy::core::{Validate, ValidationError};
+use validy::core::{Validate, ValidateAndParse, ValidationError};
+use validy::{assert_errors, assert_parsed};
 
-#[derive(Debug, Deserialize, Validate)]
-#[validate(asynchronous, context = Arc<dyn UserService>, payload, axum)]
-pub struct CreateUserExampleDTO {
-	#[modify(trim)]
+#[derive(Debug, Validate, PartialEq)]
+#[validate(payload, axum)]
+#[wrapper_derive(Clone)]
+pub struct CreateUserDTO {
+	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
-	#[validate(required("name is required"))] // Just changes the 'required' message.
+	#[validate(required("name is required"))]
 	pub name: String,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom_with_context(validate_unique_email))]
-	// You can pass extra arguments.
-	//#[validate(async_custom_with_context(validate_unique_email, [&wrapper.name]))]
-	// If 'payload' is false, you should replace 'wrapper' with 'self'.
-	// Technically you can also access variables within the implementation, but I don't recommend it. 
-	#[validate(inline(|_| true))] // Just an example.
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
-	
-	// The order of a rule's arguments can be changed using the '=' operator.
+
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
-	// However, positional argument order is still the priority.
-	//#[validate(length(3..=12, "size", message = "password must be between 3 and 12 characters"))]
-	// In the line above, "size" is treated as the message argument (which is then immediately overridden).
 	pub password: String,
 
-	#[special(from_type(String))] // 'dependent_id' will be deserialized as Option<String>.
-	#[modify(lowercase)] // You can modify or validate it as a String, if it has a value.
-	#[modify(inline(|_| 3))] // You can then parse it to the final value type.
-	#[validate(range(3..=12))] // And validate or modify it again.
+	#[special(from_type(String))]
+	#[modificate(lowercase)]
+	#[parse(inline(|x: String| x.parse::<u16>().unwrap_or(0)))]
+	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
-	#[modify(trim)]
-	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
-	#[modify(snake_case)]
-	#[modify(custom(modify_tag))]
-	pub tag: Option<String>, // 'tag' is truly optional.
-	
-	#[special(from_type(RoleWrapper))] // Required to correctly define the wrapper field type.
-	#[special(nested(Role, RoleWrapper))] // Required to correctly validate nested content.
-	// The wrapper type and the 'from_type' rule can be ignored when 'payload' is disabled.
-	//#[special(nested(Role))]
-	pub role: Option<Role>, // Can be optional or required.
-	//pub role: Role,
+	#[modificate(trim)]
+	#[validate(length(0..=254, "code must not be more than 254 characters"))]
+	#[modificate(snake_case)]
+	#[modificate(custom(modificate_code))]
+	pub code: Option<String>,
 }
 
-// To use a struct in nested validations, it needs to derive 'Default'.
-#[derive(Debug, Deserialize, Default, Validate)]
-#[validate(payload, axum)]
-pub struct Role {
-	#[special(from_type(Vec<String>))]
-	#[validate(length(1..=2))]
-	#[special(for_each( // You can validate or modify each item in a collection.
- 	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-    modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))), // Just another parse example.
-    validate(inline(|x: &u32| *x > 1)), // Just a validation example.
- 	  modify(inline(|x| x + 1))
-	))]
-	pub permissions: Vec<u32>,
-	
-	#[special(from_type(Vec<String>))]
-	#[special(for_each(
-	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-		modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
-	  validate(inline(|x: &u32| *x > 1)),
-		modify(inline(|x| x + 1))
-	))]
-	pub alt_permissions: Vec<u32>,
+fn modificate_code(code: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*code = code.clone() + "_code";
+	Ok(())
 }
 
-// As a rule, the input for custom functions is '(&field, &field_name)'.
-// All custom modification rules can also throw validation errors.
-// Unfortunately, each modification has to return a new value instead of changing the existing one in-place.
-// This ensures that changes are only committed at the end of the validation process.
-fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	("new_tag".to_string(), None)
-}
+#[test]
+pub fn should_validate() {
+	let mut wrapper = CreateUserDTOWrapper {
+		name: None,
+		email: Some("test@gmail.com".to_string()),
+		password: None,
+		dependent_id: Some("3".to_string()),
+		code: None,
+	};
 
-// Custom functions can be async instead of sync.
-// With context, or not. See 'custom', 'custom_with_context', 'async_custom',
-// 'async_custom_with_context', and 'inline' rules.
-async fn validate_unique_email(
-	email: &str,
-	field_name: &str,
-	service: &Arc<dyn UserService>, // Only if context is provided.
-	//name: &str                    // Example with extra arguments.
-) -> Result<(), ValidationError> {
-	let result = service.email_exists(email).await;
+	let result = CreateUserDTO::validate_and_parse(wrapper.clone());
 
-	match result {
-		Ok(false) => Ok(()),
-		Ok(true) => Err(ValidationError::builder()
-			.with_field(field_name.to_string())
-			.as_simple("unique")
-			.with_message("e-mail must be unique")
-			.build()
-			.into()),
-		Err(_) => { // Simplified error handling
-			Err(ValidationError::builder()
-				.with_field(field_name.to_string())
-				.as_simple("internal")
-				.with_message("internal error")
-				.build()
-				.into())
+	assert_errors!(result, wrapper.clone(), {
+	  "name" => ("required", "name is required"),
+	  "password" => ("required", "is required")
+	});
+
+	wrapper.name = Some("test".to_string());
+	wrapper.password = Some("test".to_string());
+	wrapper.code = Some("code test".to_string());
+
+	let result = CreateUserDTO::validate_and_parse(wrapper.clone());
+
+	assert_parsed!(
+		result,
+		wrapper,
+		CreateUserDTO {
+			name: "test".to_string(),
+			email: "test@gmail.com".to_string(),
+			password: "test".to_string(),
+			dependent_id: 3,
+			code: Some("code_test_code".to_string()),
 		}
-	}
+	);
 }
 ```
 
-## 🔎 Validation Flow
+If that example isn't enough, check [📁 More Examples](#-more-examples).
 
-You might not like it, but I took the liberty of naming things as I see fit. So, first, let me show you my glossary:
+## 📓 Glossary
+
+I've made some naming that might escape the standard, so I think this might be helpful:
 
 ```rust
-#[derive(Debug, Deserialize, Validate)]
-//vvvvvvvv Configuration
-#[validate(asynchronous, context = Arc<dyn UserService>, payload)]
+use validy::core::Validate;
+
+#[derive(Validate)]
+//vvvvvvvv Struct attribute
+#[validate(asynchronous, context = bool, payload)]
 //---------^^^^^^^^^^^^ Configuration attribute
 pub struct CreateUserExampleDTO {
-    //vvvvvv Rule group
-    #[modify(trim, lowercase)]
-    //-------^^^^ Rule
-    #[validate(length(3..=120, "name must be between 3 and 120 characters"))]
-    //----------------^^^^^^^ Rule arg 'range' value
-    pub name: String,
-    //-------------------------------vvvvvv Rule arg 'code' value
-    #[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
-    //------------------------^^^^ Rule arg 'code' declaration
-    pub password: String,
+  //vvvvvvvvvv Field attribute
+  #[modificate(trim, lowercase)]
+  //-----------^^^^ Rule
+  #[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+  //----------------^^^^^^^ Rule arg 'range' value
+  pub name: String,
+  //-------------------------------vvvvvv Rule arg 'code' value
+  #[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
+  //------------------------^^^^ Rule arg 'code' declaration
+  pub password: String,
 }
 ```
 
-Almost all `rules` are executed from left to right and top to bottom, according to their rule group and definition order.
+## 🔎 About Implementations
 
-### Implementations
+Almost all `rules` are executed from left to right and top to bottom, according to their field attribute and definition order.
 
-There is a cost to committing changes after all `rules` have been met. When the `modify` or `payload` configuration attributes are enabled, a clone of the value is created after each modification. Some validation rules also need to clone values.
+I decided to avoid unnecessary `.clone()` calls for performance. Practically all rules only use references, the exceptions are the `allowlist` and `blocklist` rules, which need to clone the items (the field to be validated does not need to be cloned). Additionally, the `regex` rule and some rules with patterns needs to clone the `Arc` pointer from the cache.
 
-In contrast, no primitive `rule` is asynchronous. Therefore, the `asynchronous` configuration attribute is only necessary to enable custom async `rules`. The use of `context` is similar.
-
-## 🎯 Work In Progress
-
-Some of these features are available now, but are only partially finished. I will document them fully once they are complete.
-
-- [ ] More test coverage.
-- [x] Custom validation status code.
-- [ ] Failure mode.
-  - The current default is `FailOncePerField` (covered by the tests).
-- [ ] Typed multipart/form-data validation support.
-  - [ ] File validation rules (maybe).
-- [x] Validation rules for uuid.
-- [ ] Validation rules for decimal (maybe).
-- [ ] Better macro documentation.
+It was also inevitable that the `parse` field attribute returns new values.
 
 ## 🔌 Axum Integration
 
 When you enable the `axum` feature, the library automatically generates the `FromRequest` implementation for your `struct` if it has the `axum` configuration attribute enabled. The automated flow is as follows:
 
-- *Extract:* receives the JSON body.
+- *Extract:* receives the body.
 - *Deserialize:* deserializes the body.
-  - When the `payload` configuration attribute is enabled, the body is deserialized into a `wrapper`.
-  - The name of the `wrapper` struct is the name of the `payload` struct with the suffix `'Wrapper'`. For example, `CreateUserDTO` generates a public `wrapper` named `CreateUserDTOWrapper`.
-  - The generated `wrapper` is left exposed for you to use.
-- *Execute:* executes all the `rules`.
+  - When the `payload` configuration attribute is enabled, the body is deserialized into [📨 Wrapper](#-wrappers).
+- *Execute:* executes all `rules`.
 - *Convert:* if successful, passes the final struct to the `handler`.
-- *Error Handling:* if any step fails, returns `Bad Request` with a structured list of errors.
-  - When the `payload` configuration attribute is disabled, missing fields throw an `Unprocessable Entity` error.
-  
+- *Error Handling:* if any step fails, returns `Bad Request` by default with the errors.
+
 See an example:
 
 ```rust
-#[derive(Debug, Deserialize, Validate)]
+use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
+use validy::core::{Validate, ValidateAndParse, ValidationError};
+use std::{sync::Arc, fmt::Debug};
+
+#[derive(Debug, Validate)]
 #[validate(asynchronous, context = Arc<dyn UserService>, payload, axum)]
 pub struct CreateUserDTO {
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
 	pub name: String,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	#[validate(email("invalid email format"))]
 	#[validate(async_custom_with_context(validate_unique_email))]
@@ -242,14 +200,45 @@ pub struct CreateUserDTO {
 	pub password: String,
 }
 
-#[debug_handler]
 pub async fn create_user(
 	State(service): State<Arc<dyn UserService>>,
-	body: CreateUserDTO, // You can also deconstruct it.
-	// CreateUserDTO { name, email, password }: CreateUserDTO,
-) -> Result<impl IntoResponse, Error> {
-	let user = service.create(body.name, body.email, body.password).await?;
-	Ok((StatusCode::CREATED, Json(UserDTO::from(user))))
+	CreateUserDTO { name, email, password }: CreateUserDTO,
+) -> Result<Response, Response> {
+	service.create(name, email, password).await?;
+	Ok(StatusCode::CREATED.into_response())
+}
+
+async fn validate_unique_email(
+	email: &str,
+	_field_name: &str,
+	service: &Arc<dyn UserService>,
+) -> Result<(), ValidationError> {
+	let result = service.email_exists(email).await;
+
+	match result {
+		Ok(false) => Ok(()),
+		Ok(true) => Err(ValidationError::builder()
+			.with_field("email")
+			.as_simple("unique")
+			.with_message("email already in use")
+			.build()
+			.into()),
+		Err(_) => {
+			Err(ValidationError::builder()
+				.with_field("email")
+				.as_simple("internal error")
+				.with_message("It wasn't possible to verify if the email is unique")
+				.build()
+				.into())
+		}
+	}
+}
+
+#[async_trait::async_trait]
+pub trait UserService: Send + Sync + Debug {
+	async fn create(&self, name: String, email: String, password: String) -> Result<(), Response>;
+	async fn email_exists(&self, email: &str) -> Result<bool, Response>;
+	//...
 }
 ```
 
@@ -260,10 +249,92 @@ Yes, it's beautiful.
 You can change the HTTP status code returned on validation failure:
 
 ```rust
-ValidationSettings::set_failure_status_code(StatusCode::BAD_REQUEST);
+use validy::settings::ValidationSettings;
+use axum::http::StatusCode;
+
+ValidationSettings::set_failure_status_code(StatusCode::UNPROCESSABLE_ENTITY);
+assert_eq!(ValidationSettings::get_failure_status_code(), StatusCode::UNPROCESSABLE_ENTITY);
 ```
 
 This method is `thread-safe`. The default status code is `BAD_REQUEST`.
+
+### Multipart support
+
+When you enable the `axum_multipart` feature, the library automatically generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled. But you should still use `TryFromMultipart`.
+
+```rust
+use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
+use validy::core::{Validate, ValidateAndParse, ValidationError};
+use std::{sync::Arc, fmt::Debug};
+use tempfile::NamedTempFile;
+use axum_typed_multipart::{FieldData, TryFromMultipart};
+
+#[derive(Debug, Validate)]
+#[validate(asynchronous, context = Arc<dyn UserService>, payload, axum, multipart)]
+#[wrapper_derive(TryFromMultipart)]
+pub struct CreateUserDTO {
+  #[form_data(limit = "10MB")]
+  #[validate(field_content_type(r"^(image/.*)$"))] //requires `axum_multipart_field_data` feature yet
+  pub avatar: FieldData<NamedTempFile>,
+  
+  #[form_data(field_name = "user_name")]
+	#[modificate(trim)]
+	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	pub name: String,
+
+	#[modificate(trim)]
+	#[validate(length(0..=254, "email must not be more than 254 characters"))]
+	#[validate(email("invalid email format"))]
+	#[validate(async_custom_with_context(validate_unique_email))]
+	pub email: String,
+
+	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
+	pub password: String,
+}
+
+pub async fn create_user(
+	State(service): State<Arc<dyn UserService>>,
+	CreateUserDTO { avatar, name, email, password }: CreateUserDTO,
+) -> Result<Response, Response> {
+	service.create(avatar, name, email, password).await?;
+	Ok(StatusCode::CREATED.into_response())
+}
+
+async fn validate_unique_email(
+	email: &str,
+	_field_name: &str,
+	service: &Arc<dyn UserService>,
+) -> Result<(), ValidationError> {
+	let result = service.email_exists(email).await;
+
+	match result {
+		Ok(false) => Ok(()),
+		Ok(true) => Err(ValidationError::builder()
+			.with_field("email")
+			.as_simple("unique")
+			.with_message("email already in use")
+			.build()
+			.into()),
+		Err(_) => {
+			Err(ValidationError::builder()
+				.with_field("email")
+				.as_simple("internal error")
+				.with_message("It wasn't possible to verify if the email is unique")
+				.build()
+				.into())
+		}
+	}
+}
+
+#[async_trait::async_trait]
+pub trait UserService: Send + Sync + Debug {
+	async fn create(&self, avatar: FieldData<NamedTempFile>, name: String, email: String, password: String) -> Result<(), Response>;
+	async fn email_exists(&self, email: &str) -> Result<bool, Response>;
+	//...
+}
+```
+
+Yes, it's beautiful too.
 
 ## 🧩 Manual Usage
 
@@ -291,20 +362,22 @@ The crate's behavior can be adjusted in your `Cargo.toml`.
 
 | **Feature** | **Description** | **Dependencies** |
 | :-------- | :------- | :------- |
-| `default` | `derive`, `validation`, `modification` | | 
+| `default` | `derive`, `validation`, `modification`, `parsing` | | 
 | `all` | Enables all features. | |
-| `derive` | Enables macro functionality. | `serde`, `validation_derive` |
-| `validation` | Enables validation functions. Needed by almost all primitive `derive` validation rules. | |
-| `modification` | Enables modification functions. Needed by almost all primitive `derive` modification rules. | `heck` |
-| `uuid` | Enables `uuid` rules. | `uuid` |
-| `email` | Enables email rule. | `email_address` |
-| `pattern` | Enables `pattern` and `url` rules. Uses `moka` to cache compiled `regex` patterns. The cache can be configured by calling `ValidationSettings::set_regex_cache(...)`. | `moka`, `regex` | 
+| `derive` | Enables macro functionality. | `dep:serde`, `dep:validation_derive` |
+| `validation` | Enables validation functions. Needed by almost all not custom or inline validation rules. | |
+| `modification` | Enables modification functions. Needed by almost all not custom or inline modification rules. | `dep:heck` |
+| `parsing` | Enables parsing functions. Needed by all not custom or inline parsing rules. | |
+| `uuid` | Enables `uuid` rules. | `dep:uuid` |
+| `email` | Enables email rule. | `dep:email_address` |
+| `pattern` | Enables `pattern` and `url` rules. Uses `moka` to cache compiled `regex` patterns. The cache can be configured by calling `ValidationSettings::set_regex_cache(...)`. | `dep:moka`, `dep:regex` | 
 | `ip` | Enables ip rules. | |
-| `time` | Enables time rules. | `chrono` |
-| `axum` | Enables Axum integration. | `axum`, `derive` |
+| `time` | Enables time rules. | `dep:chrono` |
+| `axum` | Enables Axum integration. | `dep:axum`, `derive` |
 | `axum_multipart` | Enables multipart support. | `axum_typed_multipart`, `axum` |
+| `axum_multipart_field_data` | Enables multipart field data rules " | `axum_multipart`, `pattern` |
 | `macro_rules` | Enables macros for validation errors. | |
-| `macro_rules_assertions` | Enables macros for assertions (tests). | `pretty_assertions` |
+| `macro_rules_assertions` | Enables macros for assertions (tests). | `dep:pretty_assertions` |
 
 ## 🚧 Validation Rules
 
@@ -362,6 +435,13 @@ Primitive rules for the `#[validate(...)]` attribute.
 | `before_today`(accept_equals = <?bool>, message = <?string>, code = <?string>) | Validates that the `NaiveDate` is strictly before the current day. |
 | `today`(message = <?string>, code = <?string>) | Validates that the `NaiveDate` matches the current day. |
 
+### For multipart `field data` fields
+
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `field_name`(pattern = \<regex>, message = <?string>, code = <?string>) | Validates that the field name matches the provided Regex pattern. |
+| `field_file_name`(pattern = \<regex>, message = <?string>, code = <?string>) | Validates that the field file name matches the provided Regex pattern. |
+| `field_content_type`(pattern = \<regex>, message = <?string>, code = <?string>) | Validates that the field content type matches the provided Regex pattern. |
 
 ### Custom rules
 
@@ -377,7 +457,7 @@ All rules prefixed with `async_` require the `asynchronous` configuration attrib
 
 ## 🔨 Modification Rules
 
-Primitive rules for the `#[modify(...)]` attribute. These all require either the `payload` or `modify` attribute to be enabled on the struct.
+Primitive rules for the `#[modificate(...)]` attribute. These all require either the `payload` or `modificate` attribute to be enabled on the struct.
 
 > The '?' indicates that the argument is optional.
 
@@ -385,7 +465,6 @@ Primitive rules for the `#[modify(...)]` attribute. These all require either the
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `parse_uuid` | Validates that a string is a valid UUID and parses it. |
 | `trim` | Removes whitespace from both ends of the string. |
 | `trim_start` | Removes whitespace from the start of the string. |
 | `trim_end` | Removes whitespace from the end of the string. |
@@ -400,16 +479,6 @@ Primitive rules for the `#[modify(...)]` attribute. These all require either the
 | `shouty_kebab_case` | Converts the string to SHOUTY-KEBAB-CASE. |
 | `train_case` | Converts the string to Train-Case. |
 
-### For `date` or `time` fields
-
-All of these rules were created to be used with `#[special(from_type(String))]` declared before them.
-
-| **Rule** | **Description** |
-| :-------- | :------- |
-| `parse_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `DateTime<FixedOffset>` matching the specified format. |
-| `parse_naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDateTime` matching the specified format. |
-| `parse_naive_date`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDate` matching the specified format. |
-
 ### Custom rules
 
 All rules prefixed with `async_` require the `asynchronous` configuration attribute to be enabled. All rules suffixed with `_with_context` require the `context` configuration attribute to be defined.
@@ -422,7 +491,41 @@ All rules prefixed with `async_` require the `asynchronous` configuration attrib
 | `async_custom`(function = \<function>, params = <?array>) | Modifies the value using a custom async function. |
 | `async_custom_with_context`(function = \<function>, params = <?array>) | Modifies the value using a custom async function with context access. |
 
-## 🔧 Special Rules
+## 🔧 Parsing Rules
+
+Primitive rules for the `#[parse(...)]` attribute. These all require either the `payload` attribute to be enabled on the struct.
+
+> The '?' indicates that the argument is optional.
+
+### For `date` or `time` fields
+
+All of these rules were created to be used with `#[special(from_type(String))]` declared before them.
+
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `parse_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `DateTime<FixedOffset>` matching the specified format. |
+| `parse_naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDateTime` matching the specified format. |
+| `parse_naive_date`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDate` matching the specified format. |
+
+### For `uuid` fields
+
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `parse_uuid` | Validates and parses a string into a UUID. |
+
+### Custom rules
+
+All rules prefixed with `async_` require the `asynchronous` configuration attribute to be enabled. All rules suffixed with `_with_context` require the `context` configuration attribute to be defined.
+
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `inline`(closure = \<closure>, params = <?array>) | Parses the value using an inline closure. |
+| `custom`(function = \<function>, params = <?array>) | Parses the value using a custom function. |
+| `custom_with_context`(function = \<function>, params = <?array>) | Parses the value using a custom function with context access. |
+| `async_custom`(function = \<function>, params = <?array>) | Parses the value using a custom async function. |
+| `async_custom_with_context`(function = \<function>, params = <?array>) | Parses the value using a custom async function with context access. |
+
+## 🔮 Special Rules
 
 Primitive rules for the `#[special(...)]` attribute.
 
@@ -435,6 +538,23 @@ Primitive rules for the `#[special(...)]` attribute.
 | `for_each`(config?(from_item = <?type>, to_collection = <?type>, from_collection = <?type>), \<rule>) | Applies validation rules to every element in a collection. The `from_item` arg from the optional `config` rule defines the type of each collection item. The `to_collection` arg defines the final type of the collection, and the `from_collection` arg defines the initial type. It's like a `from_type` adapter for collections. |
 | `from_type`(value = <?type>) | Defines the type of the field in the wrapper. Must be defined before all other rules on a field. |
 
+## 📨 Wrappers
+
+Wrappers are generated structs similar to the original struct where all fields are covered with `Option`. They all have the `Default` and `Debug` derive macros by default. And when the `multipart` configuration attribute is disabled, they also implement `Deserialize`. Ultimately, the only reason I could think of for having all optional fields was the deserialization and validation of required fields with custom errors.
+
+The name of the wrapper struct is the name of the origional struct with the suffix 'Wrapper'. For example, `CreateUserDTO` generates a public wrapper named `CreateUserDTOWrapper`. The generated wrapper is left exposed for you to use. You also can use `#[wrapper_derive(...)]` struct attribute in the origional struct to apply derive macros on the wrapper.
+
+The following field attributes are passed to the wrapper when its original struct has them in the fields:
+- `serde` from `serde`.
+- `field` from `axum_typed_multipart`.
+- `form_data` from `axum_typed_multipart`.
+
+The following field attributes are passed to the wrapper when its original struct has them in the fields:
+- `try_from_multipart` from `axum_typed_multipart`.
+- `serde` from `serde`
+
+> It doesn't seem very difficult to me, so we'll probably have a way to apply any field attribute or struct attribute from other libraries soon. For now, this is a limitation.
+
 ## 📐 Useful Macros
 
 Sometimes, you might prefer to use macros to declare errors or assertions.
@@ -444,29 +564,37 @@ Sometimes, you might prefer to use macros to declare errors or assertions.
 All require the `macro_rules` feature flag to be enabled.
 
 ```rust
+use validy::validation_error;
 // SimpleValidationError
-let error = validation_error!(field.to_string(), "custom_code", "custom message");
+let error = validation_error!("field", "custom_code", "custom message");
 ```
 
 ```rust
+use validy::validation_error;
 // SimpleValidationError
-let error = validation_error!(field.to_string(), "custom_code");
+let error = validation_error!("field", "custom_code");
 ```
 
 ```rust
+use validy::validation_errors;
 // ValidationErrors
 let errors = validation_errors! {
   "a" => ("custom_code", "custom message"),
 	"b" => ("nested", validation_errors! {
-	  "c" => ("custom_code", "custom message")
+	  "c" => ("custom_code", "custom message"),
+		"d" => [
+		  ("custom_code", "custom message"), 
+			("custom_code_2", "custom_message_2")
+		]
 	})
 };
 ```
 
 ```rust
+use validy::{nested_validation_error, validation_errors};
 // NestedValidationError
 let error = nested_validation_error!(
-	field.to_string(),
+	"field",
 	"custom_code",
 	validation_errors! {
     "a" => ("custom_code", "custom message"),
@@ -479,27 +607,184 @@ let error = nested_validation_error!(
 All require the `macro_rules_assertions` feature flag to be enabled.
 
 ```rust
-let mut wrapper = TestWrapper::default();
-let mut result = Test::validate_and_parse(&wrapper);
-assert_errors!(result, wrapper, { // 'wrapper' is the input
-	"a" => ("required", "is required"),
-});
-```
+use validy::{
+	assert_errors, assert_modification, assert_parsed, assert_validation,
+	core::{Validate, ValidateAndModificate, ValidateAndParse},
+};
 
-```rust
+#[derive(Debug, PartialEq, Clone, Default, Validate)]
+struct Test {
+	#[validate(range(1..=2, "out of range"))]
+	a: u32,
+}
+
+let mut test = Test::default();
+let result = Test::validate_and_parse(test.clone());
+
+assert_errors!(result, test, {
+  "a" => ("range", "out of range"),
+});
+
+test.a = 1;
 let result = test.validate_and_modificate();
 assert_validation!(result, test);
-assert_modification!(test.b, Some(expected.to_string()), test);
+assert_modification!(test.a, 1, test);
+
+let result = Test::validate_and_parse(test.clone());
+assert_parsed!(result, test, Test { a: 1 });
 ```
 
+## 💝 Complete Example
+
 ```rust
-result = Test::validate_and_parse(&wrapper);
-assert_parsed!(result, wrapper, Test { a: *expected, b: None });
+use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
+use validy::core::{Validate, ValidationError};
+use std::{sync::Arc, fmt::Debug};
+
+#[derive(Debug, Validate)]
+#[validate(asynchronous, context = Arc<dyn UserService>, payload, axum)]
+pub struct CreateUserExampleDTO {
+	#[modificate(trim)]
+	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	#[validate(required("name is required"))] // Just changes the 'required' message.
+	pub name: String,
+
+	#[modificate(trim)]
+	#[validate(email("invalid email format", "bad_format"))]
+	#[validate(async_custom_with_context(validate_unique_email))]
+	// You can pass extra arguments.
+	//#[validate(async_custom_with_context(validate_unique_email, [&wrapper.name]))]
+	// If 'payload' is false, you should replace 'wrapper' with 'self'.
+	// Technically you can also access variables within the implementation, but I don't recommend it. 
+	#[validate(inline(|_| true))] // Just an example.
+	#[validate(length(0..=254, "email must not be more than 254 characters"))]
+	pub email: String,
+	
+	// The order of a rule's arguments can be changed using the '=' operator.
+	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
+	// However, positional argument order is still the priority.
+	//#[validate(length(3..=12, "size", message = "password must be between 3 and 12 characters"))]
+	// In the line above, "size" is treated as the message argument (which is then immediately overridden).
+	pub password: String,
+
+	#[special(from_type(String))] // 'dependent_id' will be deserialized as Option<String>.
+	#[modificate(lowercase)] // You can modificate or validate it as a String, if it has a value.
+	#[parse(inline(|x: String| x.parse::<u16>().unwrap_or(0)))] // You can then parse it to the final value type.
+	#[modificate(inline(|x: &mut u16| *x = 3))] // And validate or modificate it again.
+	#[validate(range(3..=12))] 
+	pub dependent_id: u16,
+
+	#[modificate(trim)]
+	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
+	#[modificate(snake_case)]
+	#[modificate(custom(modificate_tag))]
+	pub tag: Option<String>, // 'tag' is truly optional.
+	
+	#[special(from_type(RoleWrapper))] // Required to correctly define the wrapper field type.
+	#[special(nested(Role, RoleWrapper))] // Required to correctly validate nested content.
+	// The wrapper type and the 'from_type' rule can be ignored when 'payload' is disabled.
+	//#[special(nested(Role))]
+	pub role: Option<Role>, // Can be optional or required.
+	//pub role: Role,
+}
+
+// To use a struct in nested validations, it needs to derive 'Default'.
+#[derive(Debug, Default, Validate)]
+#[validate(payload, axum)]
+pub struct Role {
+	#[special(from_type(Vec<String>))]
+	#[validate(length(1..=2))]
+	#[special(for_each( // You can validate or modificate each item in a collection.
+ 	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
+    parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))), // Just another parse example.
+    validate(inline(|x: &u32| *x > 1)), // Just a validation example.
+ 	  modificate(inline(|x: &mut u32| *x += 1))
+	))]
+	pub permissions: Vec<u32>,
+	
+	#[special(from_type(Vec<String>))]
+	#[special(for_each(
+	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
+		parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))),
+	  validate(inline(|x: &u32| *x > 1)),
+		modificate(inline(|x: &mut u32| *x += 1))
+	))]
+	pub alt_permissions: Vec<u32>,
+}
+
+// As a rule, the input for custom functions is '(&field, &field_name)'.
+// All custom modification rules can also throw validation errors.
+// Unfortunately, each modification has to return a new value instead of changing the existing one in-place.
+// This ensures that changes are only committed at the end of the validation process.
+fn modificate_tag(tag: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*tag = "new_tag".to_string();
+	Ok(())
+}
+
+// Custom functions can be async instead of sync.
+// With context, or not. See 'custom', 'custom_with_context', 'async_custom',
+// 'async_custom_with_context', and 'inline' rules.
+async fn validate_unique_email(
+	email: &str,
+	field_name: &str,
+	service: &Arc<dyn UserService>, // Only if context is provided.
+	//name: &str                    // Example with extra arguments.
+) -> Result<(), ValidationError> {
+	let result = service.email_exists(email).await;
+
+	match result {
+		Ok(false) => Ok(()),
+		Ok(true) => Err(ValidationError::builder()
+			.with_field(field_name.to_string())
+			.as_simple("unique")
+			.with_message("e-mail must be unique")
+			.build()
+			.into()),
+		Err(_) => { // Simplified error handling
+			Err(ValidationError::builder()
+				.with_field(field_name.to_string())
+				.as_simple("internal")
+				.with_message("internal error")
+				.build()
+				.into())
+		}
+	}
+}
+
+pub async fn create_user(
+	State(service): State<Arc<dyn UserService>>,
+	body: CreateUserExampleDTO,
+) -> Result<Response, Response> {
+	service.create(body.name, body.email, body.password).await?;
+	Ok(StatusCode::CREATED.into_response())
+}
+
+#[async_trait::async_trait]
+pub trait UserService: Send + Sync + Debug {
+  async fn create(&self, name: String, email: String, password: String) -> Result<(), Response>;
+	async fn email_exists(&self, email: &str) -> Result<bool, Response>;
+	//...
+}
 ```
 
 ## 📁 More Examples
 
-If you need more references, you can use the `tests` directory as a reference.
+If the examples aren't enough, I've included a more complete and documented example [here](/docs/complete_example.md). You also can use the [tests](/tests) as a reference.
+
+## 🎯 Work In Progress
+
+Some of these features are available now, but are only partially finished. I will document them fully once they are complete.
+
+- [x] More test coverage.
+- [x] Custom validation status code.
+- [x] Typed multipart/form-data validation support.
+  - [x] File validation rules.
+- [x] Validation rules for uuid.
+- [x] Better documentation.
+- [ ] Failure mode.
+  - The current default is `FailOncePerField` (covered by the tests).
+- [ ] Fully support for external crates field and structs attributes.
+- [ ] Validation rules for decimal (maybe).
 
 ## 🎁 For Developers
 

@@ -1,11 +1,13 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
 	attributes::ValidationAttributes,
 	factories::{
-		boilerplates::failure_mode::get_failure_mode_boilerplate, core::AbstractValidationFactory,
-		extensions::payloads::get_async_payload_with_context_extensions, utils::payloads::PayloadsCodeFactory,
+		boilerplates::failure_mode::get_failure_mode_boilerplate,
+		core::AbstractValidationFactory,
+		extensions::payloads::get_async_payload_with_context_extensions,
+		others::{payloads::PayloadsCodeFactory, wrappers::WrapperFactory},
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -14,11 +16,12 @@ use crate::{
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Type, parse::ParseStream};
+use syn::{DeriveInput, Ident, Type, parse::ParseStream};
 
 pub struct AsyncPayloadWithContextFactory<'a> {
 	struct_name: &'a Ident,
 	context_type: &'a Type,
+	wrapper_factory: WrapperFactory,
 }
 
 impl<'a> AsyncPayloadWithContextFactory<'a> {
@@ -26,18 +29,21 @@ impl<'a> AsyncPayloadWithContextFactory<'a> {
 		Self {
 			struct_name,
 			context_type,
+			wrapper_factory: WrapperFactory::default(),
 		}
 	}
 }
 
 impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
+	fn init(&mut self, input: &DeriveInput, attributes: &ValidationAttributes) {
+		self.wrapper_factory = WrapperFactory::from(input, attributes);
+	}
+
 	fn create(
 		&self,
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		struct_attributes: Vec<(Attribute, Option<Import>)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -47,9 +53,9 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 		let struct_name = self.struct_name;
 		let context_type = self.context_type;
 
+		let (wrapper_struct, wrapper_ident) = self.wrapper_factory.create(struct_name, &fields);
 		let mut code_factory = PayloadsCodeFactory(&mut fields);
-		let (wrapper_struct, wrapper_ident) =
-			code_factory.wrapper(struct_name, struct_attributes, fields_attributes, imports);
+
 		let extensions = get_async_payload_with_context_extensions(
 			self.struct_name,
 			attributes,
@@ -60,7 +66,7 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 
 		let operations = code_factory.operations();
 		let commit = code_factory.commit();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
 		let failure_mode = get_failure_mode_boilerplate(attributes);
 
@@ -73,7 +79,7 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 
   			#[async_trait]
   			impl AsyncValidateAndParseWithContext<#wrapper_ident, #context_type> for #struct_name {
-         	async fn async_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+         	async fn async_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
     				let mut errors = ValidationErrors::new();
             let failure_mode = #failure_mode;
 
@@ -91,7 +97,7 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
    			impl SpecificAsyncValidateAndParseWithContext for #struct_name {
           type Wrapper = #wrapper_ident;
           type Context = #context_type;
-         	async fn specific_async_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+         	async fn specific_async_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
        			<#struct_name as AsyncValidateAndParseWithContext<#wrapper_ident, #context_type>>::async_validate_and_parse_with_context(wrapper, context).await
     		  }
    	    }
@@ -115,34 +121,62 @@ impl<'a> AbstractValidationFactory for AsyncPayloadWithContextFactory<'a> {
 			emit_error!(input.span(), "needs the wrapper type");
 		}
 
-		field.set_is_ref(false);
+		if field.is_ref() {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let mut #new_reference = #field_type::default();
+  			let result = if can_continue(&errors, failure_mode, #field_name) {
+          <#field_type as AsyncValidateAndParseWithContext<#wrapper_type, #context_type>>::async_validate_and_parse_with_context(*#reference, context).await
+  			} else {
+          Ok(#field_type::default())
+  			};
 
-		#[rustfmt::skip]
-		let result = quote! {
-		  let mut #new_reference = #field_type::default();
+  			match result {
+  			  Ok(value) => #new_reference = value,
+  				Err(e) =>  {
+    				let error = NestedValidationError::from(
+     					e,
+     					#field_name,
+    				);
 
-			let result = if can_continue(&errors, failure_mode, #field_name) {
-        <#field_type as AsyncValidateAndParseWithContext<#wrapper_type, #context_type>>::async_validate_and_parse_with_context(#reference.clone(), context).await
-			} else {
-        Ok(#field_type::default())
-			};
+  			    append_error(&mut errors, error.into(), failure_mode, #field_name);
+            if should_fail_fast(&errors, failure_mode, #field_name) {
+         			return Err(errors);
+         	  }
+  			  },
+  			}
+  		};
 
-			match result {
-			  Ok(value) => #new_reference = value,
-				Err(e) =>  {
-  				let error = NestedValidationError::from(
-  					e,
-  					#field_name,
-  				);
+			result
+		} else {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let mut #new_reference = #field_type::default();
+  			let result = if can_continue(&errors, failure_mode, #field_name) {
+          <#field_type as AsyncValidateAndParseWithContext<#wrapper_type, #context_type>>::async_validate_and_parse_with_context(#reference, context).await
+  			} else {
+          Ok(#field_type::default())
+  			};
 
-			    append_error(&mut errors, error.into(), failure_mode, #field_name);
-          if should_fail_fast(&errors, failure_mode, #field_name) {
-       			return Err(errors);
-       	  }
-			  },
-			}
-		};
+  			match result {
+  			  Ok(value) => #new_reference = value,
+  				Err(e) =>  {
+    				let error = NestedValidationError::from(
+     					e,
+     					#field_name,
+    				);
 
-		result
+  			    append_error(&mut errors, error.into(), failure_mode, #field_name);
+            if should_fail_fast(&errors, failure_mode, #field_name) {
+         			return Err(errors);
+         	  }
+  			  },
+  			}
+  		};
+
+			result
+		}
 	}
 }

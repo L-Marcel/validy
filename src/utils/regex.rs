@@ -1,8 +1,6 @@
-use std::{borrow::Cow, sync::Arc};
-
+use ::validy::settings::ValidationSettings;
 use regex::{Error, Regex};
-
-use crate::settings::ValidationSettings;
+use std::{borrow::Cow, sync::Arc};
 
 pub struct RegexManager {}
 
@@ -19,10 +17,9 @@ impl RegexManager {
 			return Ok(regex.clone());
 		}
 
-		let key_for_regex = key.clone();
 		match cache
-			.entry(key)
-			.or_try_insert_with(|| Regex::new(&key_for_regex).map(Arc::new))
+			.entry_by_ref(&key)
+			.or_try_insert_with(|| Regex::new(&key).map(Arc::new))
 		{
 			Ok(entry) => Ok(entry.value().clone()),
 			Err(arc_erro) => Err((*arc_erro).clone()),

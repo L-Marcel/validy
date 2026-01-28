@@ -1,4 +1,4 @@
-use crate::builders::ValidationErrorBuilder;
+use ::validy::builders::ValidationErrorBuilder;
 use async_trait::async_trait;
 use serde::Serialize;
 use std::{borrow::Cow, collections::HashMap};
@@ -6,7 +6,7 @@ use std::{borrow::Cow, collections::HashMap};
 pub use validation_derive::*;
 
 #[cfg(feature = "modification")]
-pub type ModificationResult<T> = (T, Option<ValidationError>);
+pub type ParseResult<T> = (T, Option<ValidationError>);
 pub type ValidationErrors = HashMap<Cow<'static, str>, Vec<ValidationError>>;
 
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
@@ -103,41 +103,41 @@ pub trait SpecificAsyncValidateAndModificateWithContext: Send + Sync {
 }
 
 pub trait ValidateAndParse<W>: Sized {
-	fn validate_and_parse(wrapper: &W) -> Result<Self, ValidationErrors>;
+	fn validate_and_parse(wrapper: W) -> Result<Self, ValidationErrors>;
 }
 
 pub trait SpecificValidateAndParse: Sized {
 	type Wrapper: Send + Sync;
-	fn specific_validate_and_parse(wrapper: &Self::Wrapper) -> Result<Self, ValidationErrors>;
+	fn specific_validate_and_parse(wrapper: Self::Wrapper) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
 pub trait AsyncValidateAndParse<W>: Sized + Send + Sync {
-	async fn async_validate_and_parse(wrapper: &W) -> Result<Self, ValidationErrors>;
+	async fn async_validate_and_parse(wrapper: W) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
 pub trait SpecificAsyncValidateAndParse: Sized + Send + Sync {
 	type Wrapper: Send + Sync;
-	async fn specific_async_validate_and_parse(wrapper: &Self::Wrapper) -> Result<Self, ValidationErrors>;
+	async fn specific_async_validate_and_parse(wrapper: Self::Wrapper) -> Result<Self, ValidationErrors>;
 }
 
 pub trait ValidateAndParseWithContext<W, C>: Sized {
-	fn validate_and_parse_with_context(wrapper: &W, context: &C) -> Result<Self, ValidationErrors>;
+	fn validate_and_parse_with_context(wrapper: W, context: &C) -> Result<Self, ValidationErrors>;
 }
 
 pub trait SpecificValidateAndParseWithContext: Sized {
 	type Wrapper: Send + Sync;
 	type Context: Send + Sync;
 	fn specific_validate_and_parse_with_context(
-		wrapper: &Self::Wrapper,
+		wrapper: Self::Wrapper,
 		context: &Self::Context,
 	) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
 pub trait AsyncValidateAndParseWithContext<W, C>: Sized + Send + Sync {
-	async fn async_validate_and_parse_with_context(wrapper: &W, context: &C) -> Result<Self, ValidationErrors>;
+	async fn async_validate_and_parse_with_context(wrapper: W, context: &C) -> Result<Self, ValidationErrors>;
 }
 
 #[async_trait]
@@ -145,7 +145,7 @@ pub trait SpecificAsyncValidateAndParseWithContext: Sized + Send + Sync {
 	type Wrapper: Send + Sync;
 	type Context: Send + Sync;
 	async fn specific_async_validate_and_parse_with_context(
-		wrapper: &Self::Wrapper,
+		wrapper: Self::Wrapper,
 		context: &Self::Context,
 	) -> Result<Self, ValidationErrors>;
 }

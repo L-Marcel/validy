@@ -1,13 +1,13 @@
 pub mod asynchronous;
-pub mod asynchronous_modify;
-pub mod asynchronous_modify_with_context;
+pub mod asynchronous_modificate;
+pub mod asynchronous_modificate_with_context;
 pub mod asynchronous_payload;
 pub mod asynchronous_payload_with_context;
 pub mod asynchronous_with_context;
 pub mod default;
 pub mod mocks;
-pub mod modify;
-pub mod modify_with_context;
+pub mod modificate;
+pub mod modificate_with_context;
 pub mod multipart;
 pub mod payload;
 pub mod payload_with_context;

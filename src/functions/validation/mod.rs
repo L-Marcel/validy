@@ -1,6 +1,8 @@
 pub mod contains;
 #[cfg(feature = "email")]
 pub mod email;
+#[cfg(feature = "axum_multipart_field_data")]
+pub mod field_data;
 pub mod inline;
 #[cfg(feature = "ip")]
 pub mod ip;

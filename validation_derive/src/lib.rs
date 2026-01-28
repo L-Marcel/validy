@@ -9,7 +9,7 @@ mod types;
 use std::cell::RefCell;
 
 use crate::{
-	attributes::{get_attributes, get_others_attributes, get_others_attributes_by_fields},
+	attributes::get_attributes,
 	core::{get_fields, get_fields_attributes},
 	factories::core::get_factory,
 	imports::ImportsSet,
@@ -19,7 +19,7 @@ use crate::{
 use proc_macro_error::{emit_error, proc_macro_error};
 use syn::{DeriveInput, spanned::Spanned};
 
-/// **Struct options:** `#[validate(context = <?type>, modify = <?bool>, payload = <?bool>, asynchronous = <?bool>)]`
+/// **Struct options:** `#[validate(context = <?type>, modificate = <?bool>, payload = <?bool>, asynchronous = <?bool>)]`
 /// * Configures global validation behavior, context injection, and serialization hooks.
 ///
 /// **Repository:** `https://github.com/L-Marcel/validy`
@@ -74,7 +74,7 @@ use syn::{DeriveInput, spanned::Spanned};
 /// * `async_custom`(function = <function>, params = <?array>): Validates using a custom async function.
 /// * `async_custom_with_context`(function = <function>, params = <?array>): Validates using a custom async function with access to the context.
 ///
-/// **Modification attributes:** `#[modify(<modifier>, ...)]`
+/// **Modification attributes:** `#[modificate(<modifier>, ...)]`
 ///
 /// *For `string` fields:*
 /// * `parse_uuid`: Validates that a string is a valid UUID and parses it.
@@ -106,7 +106,16 @@ use syn::{DeriveInput, spanned::Spanned};
 #[proc_macro_error]
 #[proc_macro_derive(
 	Validate,
-	attributes(validate, modify, special, form_data, try_from_multipart, serde)
+	attributes(
+		validate,
+		wrapper_derive,
+		modificate,
+		parse,
+		special,
+		form_data,
+		try_from_multipart,
+		serde
+	)
 )]
 pub fn validation_macro(input: Input) -> Output {
 	let ast = syn::parse(input).unwrap();
@@ -118,15 +127,16 @@ fn impl_validation_macro(ast: &DeriveInput) -> Output {
 	let mut attributes = get_attributes(ast);
 	let imports = RefCell::new(ImportsSet::new());
 
-	if attributes.modify && attributes.payload {
-		emit_error!(ast.span(), "payload implies modify");
+	if attributes.modificate && attributes.payload {
+		emit_error!(ast.span(), "payload implies modificate");
 	}
 
-	attributes.modify = attributes.modify || attributes.payload;
+	attributes.modificate = attributes.modificate || attributes.payload;
 
-	let struct_attrs = get_others_attributes(&ast.attrs);
-	let factory = get_factory(&ast.ident, &attributes);
+	let mut factory = get_factory(&ast.ident, &attributes);
+	factory.init(ast, &attributes);
+
 	let fields_attributes = get_fields_attributes(fields, factory.as_ref(), &attributes, &imports);
-	let fields_attrs = get_others_attributes_by_fields(fields);
-	factory.create(fields_attributes, &attributes, &imports, struct_attrs, fields_attrs)
+
+	factory.create(fields_attributes, &attributes, &imports)
 }

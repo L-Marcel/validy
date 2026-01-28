@@ -6,17 +6,18 @@ use validy::{assert_errors, assert_parsed};
 #[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 #[validate(payload)]
+#[wrapper_derive(Clone)]
 struct Test {
 	#[special(from_type(String))]
-	#[modify(parse_time("%Y-%m-%d %H:%M:%S %z"))]
+	#[parse(time("%Y-%m-%d %H:%M:%S %z"))]
 	pub a: DateTime<FixedOffset>,
 	#[special(from_type(String))]
-	#[modify(parse_time("%Y-%m-%d %H:%M:%S %z"))]
+	#[parse(time("%Y-%m-%d %H:%M:%S %z"))]
 	pub b: Option<DateTime<FixedOffset>>,
 }
 
 #[test]
-fn should_modify_parse_times() {
+fn should_parse_times() {
 	let cases = [
 		(
 			"2024-02-29 10:00:00 -0300",
@@ -41,14 +42,14 @@ fn should_modify_parse_times() {
 	];
 
 	let mut wrapper = TestWrapper::default();
-	let mut result = Test::validate_and_parse(&wrapper);
+	let mut result = Test::validate_and_parse(wrapper.clone());
 	assert_errors!(result, wrapper, {
 		"a" => ("required", "is required"),
 	});
 
 	for (case, expected) in cases.iter() {
 		wrapper.a = Some(case.to_string());
-		result = Test::validate_and_parse(&wrapper);
+		result = Test::validate_and_parse(wrapper.clone());
 
 		assert_parsed!(result, wrapper, Test { a: *expected, b: None });
 	}
@@ -56,7 +57,7 @@ fn should_modify_parse_times() {
 	let last_a = result.expect("should be a valid result").a;
 	for (case, expected) in cases.iter() {
 		wrapper.b = Some(case.to_string());
-		result = Test::validate_and_parse(&wrapper);
+		result = Test::validate_and_parse(wrapper.clone());
 
 		assert_parsed!(
 			result,

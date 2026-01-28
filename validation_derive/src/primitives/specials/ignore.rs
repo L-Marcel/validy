@@ -34,7 +34,7 @@ pub fn create_ignore(
 		Err(_) => IgnoreArgs::default(),
 	};
 
-	if !attributes.modify {
+	if !attributes.modificate {
 		emit_error!(input.span(), "unnecessary for validation purposes only");
 	}
 

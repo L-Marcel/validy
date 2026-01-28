@@ -2,12 +2,26 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{Ident, Type};
 
+use crate::factories::boilerplates::payloads::{
+	get_async_payload_boilerplate, get_async_payload_with_context_boilerplate, get_payload_boilerplate,
+	get_payload_with_context_boilerplate,
+};
+
 pub fn get_modification_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 	let method = quote! { self.validate_and_modificate() };
+	let payload_method = quote! {
+	  wrapper.validate_and_modificate()?;
+		Ok(wrapper)
+	};
+
 	let boilerplates = vec![
 		get_modification_with_context_boilerplate(struct_name, None, &method),
 		get_async_modification_boilerplate(struct_name, &method),
 		get_async_modification_with_context_boilerplate(struct_name, None, &method),
+		get_payload_boilerplate(struct_name, struct_name, &payload_method),
+		get_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
+		get_async_payload_boilerplate(struct_name, struct_name, &payload_method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
 	];
 
 	#[rustfmt::skip]
@@ -20,11 +34,16 @@ pub fn get_modification_factory_boilerplates(struct_name: &Ident) -> TokenStream
 
 pub fn get_modification_with_context_factory_boilerplates(struct_name: &Ident, context_type: &Type) -> TokenStream {
 	let method = quote! { self.validate_and_modificate_with_context(context) };
-	let boilerplates = vec![get_async_modification_with_context_boilerplate(
-		struct_name,
-		Some(context_type),
-		&method,
-	)];
+	let payload_method = quote! {
+	  wrapper.validate_and_modificate_with_context(context)?;
+		Ok(wrapper)
+	};
+
+	let boilerplates = vec![
+		get_async_modification_with_context_boilerplate(struct_name, Some(context_type), &method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, Some(context_type), &payload_method),
+		get_payload_with_context_boilerplate(struct_name, struct_name, Some(context_type), &payload_method),
+	];
 
 	#[rustfmt::skip]
 	let result = quote! {
@@ -36,10 +55,39 @@ pub fn get_modification_with_context_factory_boilerplates(struct_name: &Ident, c
 
 pub fn get_async_modification_factory_boilerplates(struct_name: &Ident) -> TokenStream {
 	let method = quote! { self.async_validate_and_modificate().await };
-	let boilerplates = vec![get_async_modification_with_context_boilerplate(
+	let payload_method = quote! {
+	  wrapper.async_validate_and_modificate().await?;
+		Ok(wrapper)
+	};
+
+	let boilerplates = vec![
+		get_async_modification_with_context_boilerplate(struct_name, None, &method),
+		get_async_payload_with_context_boilerplate(struct_name, struct_name, None, &payload_method),
+		get_async_payload_boilerplate(struct_name, struct_name, &payload_method),
+	];
+
+	#[rustfmt::skip]
+	let result = quote! {
+	  #(#boilerplates)*
+	};
+
+	result
+}
+
+pub fn get_async_modification_with_context_factory_boilerplates(
+	struct_name: &Ident,
+	context_type: &Type,
+) -> TokenStream {
+	let payload_method = quote! {
+	  wrapper.async_validate_and_modificate_with_context(context).await?;
+		Ok(wrapper)
+	};
+
+	let boilerplates = vec![get_async_payload_with_context_boilerplate(
 		struct_name,
-		None,
-		&method,
+		struct_name,
+		Some(context_type),
+		&payload_method,
 	)];
 
 	#[rustfmt::skip]

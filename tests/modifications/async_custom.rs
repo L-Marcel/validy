@@ -1,60 +1,68 @@
 use validy::core::{AsyncValidateAndParse, Validate, ValidationError};
-
 use validy::{assert_errors, assert_parsed, validation_error};
 
-#[allow(unused)]
-#[derive(Debug, Default, Validate, PartialEq)]
+#[derive(Debug, Validate, PartialEq)]
 #[validate(payload, asynchronous)]
+#[wrapper_derive(Clone)]
 struct Test {
-	#[modify(async_custom(modify))]
+	#[modificate(async_custom(modificate))]
 	pub a: String,
-	#[modify(async_custom(modify_two, [&wrapper.a]))]
+	#[modificate(async_custom(modificate_two, [&tmp_1_a]))]
 	pub b: Option<String>,
-	#[modify(async_custom(modify_three, [&wrapper.a, &wrapper.b]))]
+	#[modificate(async_custom(modificate_three, [&tmp_1_a, &tmp_1_b]))]
 	pub c: Option<String>,
 }
 
-async fn modify(value: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	(value.to_string() + "_test", None)
+async fn modificate(value: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*value = (value.to_string() + "_test").to_string();
+	Ok(())
 }
 
-async fn modify_two(value: &str, _field_name: &str, extra_arg: &Option<String>) -> (String, Option<ValidationError>) {
-	(extra_arg.clone().unwrap_or(value.to_string()), None)
+async fn modificate_two(
+	value: &mut String,
+	_field_name: &str,
+	extra_arg: &Option<String>,
+) -> Result<(), ValidationError> {
+	*value = extra_arg.clone().unwrap_or(value.to_string());
+	Ok(())
 }
 
-async fn modify_three(
-	value: &str,
+async fn modificate_three(
+	value: &mut String,
 	field_name: &str,
 	a: &Option<String>,
 	b: &Option<String>,
-) -> (String, Option<ValidationError>) {
+) -> Result<(), ValidationError> {
 	match (a, b) {
-		(_, None) => (
-			value.to_string(),
-			Some(validation_error!(
-				field_name.to_string(),
-				"custom_code",
-				"custom message"
-			)),
-		),
-		(Some(a), _) => (a.to_string(), None),
-		(None, Some(b)) => (b.to_string(), None),
+		(_, None) => Err(validation_error!(
+			field_name.to_string(),
+			"custom_code",
+			"custom message"
+		)),
+		(Some(a), _) => {
+			*value = a.to_string().clone();
+			Ok(())
+		}
+		(None, Some(b)) => {
+			*value = b.to_string().clone();
+			Ok(())
+		}
 	}
 }
 
 #[tokio::test]
-async fn should_modify_customs() {
+async fn should_modificate_customs() {
 	let cases = [("a", "a_test"), ("b", "b_test"), ("c", "c_test")];
 
 	let mut wrapper = TestWrapper::default();
-	let mut result = Test::async_validate_and_parse(&wrapper).await;
+	let mut result = Test::async_validate_and_parse(wrapper.clone()).await;
 	assert_errors!(result, wrapper, {
 		"a" => ("required", "is required"),
 	});
 
 	for (case, expected) in cases.iter() {
 		wrapper.a = Some(case.to_string());
-		result = Test::async_validate_and_parse(&wrapper).await;
+		result = Test::async_validate_and_parse(wrapper.clone()).await;
 
 		assert_parsed!(
 			result,
@@ -67,17 +75,17 @@ async fn should_modify_customs() {
 		);
 	}
 
-	let last_a = result.expect("should be a valid result").a;
-	for (case, _) in cases.iter() {
+	for (case, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::async_validate_and_parse(&wrapper).await;
+		result = Test::async_validate_and_parse(wrapper.clone()).await;
 
 		assert_parsed!(
 			result,
 			wrapper,
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
 				c: None
 			}
 		);
@@ -85,22 +93,24 @@ async fn should_modify_customs() {
 
 	wrapper.c = Some("".to_string());
 	wrapper.b = None;
-	result = Test::async_validate_and_parse(&wrapper).await;
+	result = Test::async_validate_and_parse(wrapper.clone()).await;
 	assert_errors!(result, wrapper, {
 	  "c" => ("custom_code", "custom message")
 	});
 
-	for (case, _) in cases.iter() {
+	for (case, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::async_validate_and_parse(&wrapper).await;
+		wrapper.c = Some(case.to_string());
+		result = Test::async_validate_and_parse(wrapper.clone()).await;
 
 		assert_parsed!(
 			result,
 			wrapper,
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
-				c: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
+				c: Some(expected.to_string())
 			}
 		);
 	}

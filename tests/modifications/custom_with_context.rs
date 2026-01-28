@@ -5,70 +5,74 @@ use validy::{assert_errors, assert_parsed, validation_error};
 #[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 #[validate(payload, context = bool)]
+#[wrapper_derive(Clone)]
 struct Test {
-	#[modify(custom_with_context(modify))]
+	#[modificate(custom_with_context(modificate))]
 	pub a: String,
-	#[modify(custom_with_context(modify_two, [&wrapper.a]))]
+	#[modificate(custom_with_context(modificate_two, [&tmp_1_a]))]
 	pub b: Option<String>,
-	#[modify(custom_with_context(modify_three, [&wrapper.a, &wrapper.b]))]
+	#[modificate(custom_with_context(modificate_three, [&tmp_1_a, &tmp_1_b]))]
 	pub c: Option<String>,
 }
 
-fn modify(value: &str, _field_name: &str, context: &bool) -> (String, Option<ValidationError>) {
+fn modificate(value: &mut String, _field_name: &str, context: &bool) -> Result<(), ValidationError> {
 	if *context {
-		(value.to_string() + "_test", None)
-	} else {
-		(value.to_string(), None)
-	}
+		*value = (value.to_string() + "_test").to_string();
+	};
+
+	Ok(())
 }
 
-fn modify_two(
-	value: &str,
+fn modificate_two(
+	value: &mut String,
 	_field_name: &str,
 	context: &bool,
 	extra_arg: &Option<String>,
-) -> (String, Option<ValidationError>) {
+) -> Result<(), ValidationError> {
 	if *context {
-		(extra_arg.clone().unwrap_or(value.to_string()), None)
-	} else {
-		(value.to_string(), None)
+		*value = extra_arg.clone().unwrap_or(value.to_string());
 	}
+
+	Ok(())
 }
 
-fn modify_three(
-	value: &str,
+fn modificate_three(
+	value: &mut String,
 	field_name: &str,
 	_context: &bool,
 	a: &Option<String>,
 	b: &Option<String>,
-) -> (String, Option<ValidationError>) {
+) -> Result<(), ValidationError> {
 	match (a, b) {
-		(_, None) => (
-			value.to_string(),
-			Some(validation_error!(
-				field_name.to_string(),
-				"custom_code",
-				"custom message"
-			)),
-		),
-		(Some(a), _) => (a.to_string(), None),
-		(None, Some(b)) => (b.to_string(), None),
+		(_, None) => Err(validation_error!(
+			field_name.to_string(),
+			"custom_code",
+			"custom message"
+		)),
+		(Some(a), _) => {
+			*value = a.to_string().clone();
+			Ok(())
+		}
+		(None, Some(b)) => {
+			*value = b.to_string().clone();
+			Ok(())
+		}
 	}
 }
 
 #[test]
-fn should_modify_customs_with_context() {
+fn should_modificate_customs_with_context() {
 	let cases = [("a", false, "a"), ("b", true, "b_test"), ("c", true, "c_test")];
 
 	let mut wrapper = TestWrapper::default();
-	let mut result = Test::validate_and_parse_with_context(&wrapper, &true);
+	let mut result = Test::validate_and_parse_with_context(wrapper.clone(), &true);
 	assert_errors!(result, wrapper, {
 		"a" => ("required", "is required"),
 	});
 
 	for (case, context, expected) in cases.iter() {
 		wrapper.a = Some(case.to_string());
-		result = Test::validate_and_parse_with_context(&wrapper, context);
+		result = Test::validate_and_parse_with_context(wrapper.clone(), context);
 
 		assert_parsed!(
 			result,
@@ -81,20 +85,20 @@ fn should_modify_customs_with_context() {
 		);
 	}
 
-	let last_a = result.expect("should be a valid result").a;
-	for (case, context, _) in cases.iter() {
+	for (case, context, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::validate_and_parse_with_context(&wrapper, context);
+		result = Test::validate_and_parse_with_context(wrapper.clone(), context);
 
 		let expected = if *context {
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
 				c: None,
 			}
 		} else {
 			Test {
-				a: last_a.clone().replace("_test", ""),
+				a: expected.to_string(),
 				b: Some(case.to_string()),
 				c: None,
 			}
@@ -105,26 +109,28 @@ fn should_modify_customs_with_context() {
 
 	wrapper.c = Some("".to_string());
 	wrapper.b = None;
-	result = Test::validate_and_parse_with_context(&wrapper, &true);
+	result = Test::validate_and_parse_with_context(wrapper.clone(), &true);
 	assert_errors!(result, wrapper, {
 	  "c" => ("custom_code", "custom message")
 	});
 
-	for (case, context, _) in cases.iter() {
+	for (case, context, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::validate_and_parse_with_context(&wrapper, context);
+		wrapper.c = Some(case.to_string());
+		result = Test::validate_and_parse_with_context(wrapper.clone(), context);
 
 		let expected = if *context {
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
-				c: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
+				c: Some(expected.to_string()),
 			}
 		} else {
 			Test {
-				a: last_a.clone().replace("_test", ""),
+				a: expected.to_string(),
 				b: Some(case.to_string()),
-				c: Some(last_a.clone().replace("_test", "")),
+				c: Some(expected.to_string()),
 			}
 		};
 

@@ -81,7 +81,8 @@ pub fn create_contains(input: ParseStream, field: &mut FieldAttributes, imports:
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_contains_fn(&#reference, #slice, #field_name, #code, #message) {
+		  let _ref = &#reference;
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_contains_fn(_ref, #slice, #field_name, #code, #message) {
         append_error(&mut errors, e, failure_mode, #field_name);
         if should_fail_fast(&errors, failure_mode, #field_name) {
      			return Err(errors);

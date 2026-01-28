@@ -1,12 +1,12 @@
-use crate::core::ValidationErrors;
+use ::validy::core::ValidationErrors;
 use pretty_assertions::assert_eq;
 use std::fmt::Debug;
 
 #[macro_export]
 macro_rules! assert_errors {
 	($result:expr, $object:expr, $( $errors:tt )*) => {
-	  let expected = $crate::validation_errors! $( $errors )*;
-		$crate::utils::assertions::assert_validation_errors(
+	  let expected = ::validy::validation_errors! $( $errors )*;
+		::validy::utils::assertions::assert_validation_errors(
 			&$result,
 			&$object,
 			&expected
@@ -17,21 +17,21 @@ macro_rules! assert_errors {
 #[macro_export]
 macro_rules! assert_parsed {
 	($result:expr, $object:expr, $expected:expr) => {
-		$crate::utils::assertions::assert_parsed_validation(&$result, &$object, &$expected);
+		::validy::utils::assertions::assert_parsed_validation(&$result, &$object, &$expected);
 	};
 }
 
 #[macro_export]
 macro_rules! assert_modification {
 	($result:expr, $object:expr, $expected:expr) => {
-		$crate::utils::assertions::assert_modification(&$result, &$object, &$expected);
+		::validy::utils::assertions::assert_modification(&$result, &$object, &$expected);
 	};
 }
 
 #[macro_export]
 macro_rules! assert_validation {
 	($result:expr, $object:expr) => {
-		$crate::utils::assertions::assert_validation(&$result, &$object);
+		::validy::utils::assertions::assert_validation(&$result, &$object);
 	};
 }
 

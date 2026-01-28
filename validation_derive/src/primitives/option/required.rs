@@ -9,6 +9,7 @@ use crate::{
 	primitives::commons::{ArgParser, parse_attrs, remove_parens},
 };
 
+#[derive(Clone)]
 pub struct RequiredArgs {
 	pub code: LitStr,
 	pub message: LitStr,

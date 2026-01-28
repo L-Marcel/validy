@@ -11,18 +11,14 @@ pub fn create_shouty_kebab_case(field: &mut FieldAttributes, imports: &RefCell<I
 	));
 
 	let reference = field.get_reference();
-	field.increment_modifications();
-	let new_reference = field.get_reference();
 	let field_name = field.get_name();
 
 	if field.is_ref() {
-		field.set_is_ref(false);
+		field.set_is_ref(true);
 		#[rustfmt::skip]
 		let result = quote! {
-			let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-	      shouty_kebab_case_fn(#reference)
-			} else {
-			  #reference.clone()
+			if can_continue(&errors, failure_mode, #field_name) {
+	      shouty_kebab_case_fn(#reference);
 			};
 		};
 
@@ -31,10 +27,9 @@ pub fn create_shouty_kebab_case(field: &mut FieldAttributes, imports: &RefCell<I
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-  			shouty_kebab_case_fn(&#reference)
-  	  } else {
-  			#reference
+			if can_continue(&errors, failure_mode, #field_name) {
+			  let _ref = &mut #reference;
+  			shouty_kebab_case_fn(_ref);
   	  };
 		};
 

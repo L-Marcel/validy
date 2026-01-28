@@ -9,7 +9,6 @@ use axum::{
 	routing::post,
 };
 use axum_typed_multipart::{FieldData, TryFromField, TryFromMultipart, TypedMultipartError};
-
 use http_body_util::BodyExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -20,21 +19,23 @@ use validy::core::{Validate, ValidationError};
 
 use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
-#[derive(Debug, TryFromMultipart, Validate, Serialize)]
-#[validate(asynchronous, modify, axum, multipart)]
+#[derive(Debug, Validate, Serialize)]
+#[validate(context = Arc<dyn MockedService>, payload, axum, multipart)]
+#[wrapper_derive(TryFromMultipart, Serialize)]
 pub struct TestDTO {
-	#[special(ignore)]
 	#[serde(skip)]
+	#[form_data(limit = "10MB")]
 	pub file: FieldData<NamedTempFile>,
 
 	#[form_data(field_name = "user_name")]
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	#[validate(required("name is required"))]
 	pub name: String,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
-	#[validate(async_custom(validate_unique_email))]
+	#[validate(custom_with_context(validate_unique_email))]
 	#[validate(inline(|_| true))]
 	#[validate(length(0..=254, "email must not be more than 254 characters"))]
 	pub email: String,
@@ -43,35 +44,37 @@ pub struct TestDTO {
 	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
 	pub password: String,
 
-	#[modify(inline(|_| 3))]
+	#[special(from_type(String))]
+	#[modificate(lowercase)]
+	#[parse(inline(|_| 3))]
 	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
-	#[modify(snake_case)]
-	#[modify(custom(modify_tag))]
+	#[modificate(snake_case)]
+	#[modificate(custom(modificate_tag))]
 	pub tag: Option<String>,
 
-	#[special(nested(RoleDTO))]
+	#[special(nested(RoleDTO, RoleDTO))]
 	pub role: Option<RoleDTO>,
 }
 
-#[derive(Debug, Clone, Deserialize, TryFromMultipart, Serialize, Default, Validate)]
-#[validate(modify, axum, multipart)]
+#[derive(Debug, Clone, TryFromMultipart, Deserialize, Serialize, Default, Validate)]
+#[validate(modificate, axum, multipart)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(
- 	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
-    validate(inline(|x: &u32| *x > 1)),
- 	  modify(inline(|x| x + 1))
+		config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
+		validate(inline(|x: &u32| *x > 1)),
+		modificate(inline(|x: &mut u32| *x += 1)),
 	))]
 	pub permissions: Vec<u32>,
 
 	#[special(for_each(
-	  config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
-	  validate(inline(|x: &u32| *x > 1)),
-		modify(inline(|x| x + 1))
+		config(from_item = u32, from_collection = Vec<u32>, to_collection = Vec<u32>),
+		validate(inline(|x: &u32| *x > 1)),
+		modificate(inline(|x: &mut u32| *x += 1)),
 	))]
 	pub alt_permissions: Vec<u32>,
 }
@@ -81,11 +84,6 @@ impl TryFromField for RoleDTO {
 	async fn try_from_field(field: Field<'_>, _limit_bytes: Option<usize>) -> Result<Self, TypedMultipartError> {
 		let name = field.name().unwrap_or_default().to_string();
 		let bytes = field.bytes().await?;
-
-		// WARNING: No manual size limit check implemented here.
-		// SECURITY: Manual size limit handling is required for TryFromFieldWithState.
-		// Unlike TryFromField which can leverage TryFromChunks for automatic size checking,
-		// the stateful variant requires explicit implementation.
 
 		let json_str = std::str::from_utf8(&bytes).map_err(|e| TypedMultipartError::WrongFieldType {
 			field_name: name.clone(),
@@ -101,12 +99,19 @@ impl TryFromField for RoleDTO {
 	}
 }
 
-fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	(tag.to_string() + "_modified", None)
+fn modificate_tag(tag: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*tag = (tag.to_string() + "_modified").to_string();
+	Ok(())
 }
 
-async fn validate_unique_email(email: &str, field_name: &str) -> Result<(), ValidationError> {
-	if email == "test@gmail.com" {
+fn validate_unique_email(
+	email: &str,
+	field_name: &str,
+	service: &Arc<dyn MockedService>,
+) -> Result<(), ValidationError> {
+	let result = service.sync_email_exists(email);
+
+	if result {
 		Err(ValidationError::builder()
 			.with_field(field_name.to_string())
 			.as_simple("unique")
@@ -162,7 +167,7 @@ async fn should_validate_requests() {
 				("user_name", "  Alice  "),
 				("email", "alice@test.com"),
 				("password", "secure"),
-				("dependent_id", "12"),
+				("dependent_id", "99"),
 				("file", "empty file"),
 			],
 			json!({
@@ -234,10 +239,10 @@ async fn should_validate_requests() {
 				"role": [{
 					"code": "nested",
 					"errors": {
-						"permissions": [{
-							"code": "length",
-							"message": "length out of range"
-						}]
+					  "permissions": [{
+						  "code": "length",
+						  "message": "length out of range"
+					  }]
 					}
 				}]
 			}),
@@ -256,10 +261,10 @@ async fn should_validate_requests() {
 			StatusCode::BAD_REQUEST,
 			vec![("permissions", "0"), ("alt_permissions", "2")],
 			json!({
-				"permissions": [{
-					"code": "inline",
-					"message": "invalid"
-				}]
+			  "permissions": [{
+				  "code": "inline",
+				  "message": "invalid"
+			  }]
 			}),
 		),
 		(
@@ -270,7 +275,16 @@ async fn should_validate_requests() {
 				("email", "alice@test.com"),
 				("file", "empty file"),
 			],
-			json!("field 'password' is required"),
+			json!({
+				"dependent_id": [{
+					"code": "required",
+					"message": "is required"
+				}],
+				"password": [{
+				  "code": "required",
+					"message": "is required"
+				}]
+			}),
 		),
 		(
 			"/test",
@@ -278,8 +292,6 @@ async fn should_validate_requests() {
 			vec![
 				("user_name", "A valid name"),
 				("email", "valid@email.com"),
-				("user_name", "Bob"),
-				("email", "bob@test.com"),
 				("password", "this field is definitely way too long for 20 bytes limit"),
 				("dependent_id", "10"),
 				("tag", "  My Super Tag  "),

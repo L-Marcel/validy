@@ -85,7 +85,8 @@ pub fn create_naive_time(
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_naive_time_fn(&#reference, #format, #field_name, #code, #message) {
+		  let _ref = &#reference;
+			if can_continue(&errors, failure_mode, #field_name) && let Err(e) = validate_naive_time_fn(_ref, #format, #field_name, #code, #message) {
         append_error(&mut errors, e, failure_mode, #field_name);
         if should_fail_fast(&errors, failure_mode, #field_name) {
      			return Err(errors);

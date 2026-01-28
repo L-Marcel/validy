@@ -1,12 +1,16 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
 	attributes::ValidationAttributes,
 	factories::{
-		boilerplates::failure_mode::get_failure_mode_boilerplate, core::AbstractValidationFactory,
+		boilerplates::{
+			failure_mode::get_failure_mode_boilerplate,
+			modifications::get_async_modification_with_context_factory_boilerplates,
+		},
+		core::AbstractValidationFactory,
 		extensions::modifications::get_async_modification_with_context_extensions,
-		utils::modifications::ModificationsCodeFactory,
+		others::modifications::ModificationsCodeFactory,
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -14,7 +18,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, Type, parse::ParseStream};
+use syn::{Ident, Type, parse::ParseStream};
 
 pub struct AsyncModificationWithContextFactory<'a> {
 	struct_name: &'a Ident,
@@ -36,8 +40,6 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		_: Vec<(Attribute, Option<Import>)>,
-		_: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -52,9 +54,9 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 			get_async_modification_with_context_extensions(self.struct_name, attributes, self.context_type, imports);
 
 		let operations = code_factory.operations();
-		let commit = code_factory.commit();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
+		let boilerplates = get_async_modification_with_context_factory_boilerplates(struct_name, context_type);
 		let failure_mode = get_failure_mode_boilerplate(attributes);
 
 		#[rustfmt::skip]
@@ -71,7 +73,7 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
   				  #(#operations)*
 
   				  if errors.is_empty() {
-  						#commit
+  						Ok(())
   				  } else {
       				Err(errors)
   				  }
@@ -86,6 +88,8 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
    			  }
    		  }
 
+        #boilerplates
+
         #extensions
 			};
 		};
@@ -95,30 +99,47 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
-		field.increment_modifications();
-		let new_reference = field.get_reference();
 		let field_name = field.get_name();
 		let (field_type, _) = get_nested_type(input);
 		let context_type = self.context_type;
 
-		field.set_is_ref(false);
+		if field.is_ref() {
+			field.set_is_ref(true);
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(#reference, context).await {
+  				let error = NestedValidationError::from(
+  					e,
+  					#field_name,
+  				);
 
-		#[rustfmt::skip]
-		let result = quote! {
-		  let mut #new_reference = #reference.clone();
-		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(&mut #new_reference, context).await {
-				let error = NestedValidationError::from(
-					e,
-					#field_name,
-				);
+  			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
+  		  }
+  		};
 
-			  append_error(&mut errors, error.into(), failure_mode, #field_name);
-        if should_fail_fast(&errors, failure_mode, #field_name) {
-     			return Err(errors);
-     	  }
-		  }
-		};
+			result
+		} else {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+  		  let _ref = &mut #reference;
+  		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(_ref, context).await {
+  				let error = NestedValidationError::from(
+  					e,
+  					#field_name,
+  				);
 
-		result
+  			  append_error(&mut errors, error.into(), failure_mode, #field_name);
+          if should_fail_fast(&errors, failure_mode, #field_name) {
+       			return Err(errors);
+       	  }
+  		  }
+  		};
+
+			result
+		}
 	}
 }

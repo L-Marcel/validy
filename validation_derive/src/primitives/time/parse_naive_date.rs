@@ -43,17 +43,17 @@ impl ArgParser for ParseNaiveDateArgs {
 	}
 }
 
-pub fn create_parse_naive_date(
+pub fn create_naive_date_parse(
 	input: ParseStream,
 	field: &mut FieldAttributes,
 	imports: &RefCell<ImportsSet>,
 ) -> TokenStream {
-	imports.borrow_mut().add(Import::ModificationFunction(
+	imports.borrow_mut().add(Import::ParsingFunction(
 		"time::default_naive_date as default_naive_date_fn",
 	));
-	imports.borrow_mut().add(Import::ModificationFunction(
-		"time::parse_naive_date as parse_naive_date_fn",
-	));
+	imports
+		.borrow_mut()
+		.add(Import::ParsingFunction("time::parse_naive_date as parse_naive_date_fn"));
 
 	let field_name = field.get_name();
 	let reference = field.get_reference();
@@ -97,7 +97,8 @@ pub fn create_parse_naive_date(
 		#[rustfmt::skip]
 		let result = quote! {
   		let (mut #new_reference, error) = if can_continue(&errors, failure_mode, #field_name) {
-  		  parse_naive_date_fn(&#reference, #format, #field_name, #code, #message)
+        let _ref = &#reference;
+  		  parse_naive_date_fn(_ref, #format, #field_name, #code, #message)
   		} else {
   		  (default_naive_date_fn(), None)
   		};

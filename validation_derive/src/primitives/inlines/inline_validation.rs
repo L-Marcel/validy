@@ -89,7 +89,8 @@ pub fn create_inline_validation(input: ParseStream, field: &mut FieldAttributes)
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-		  if can_continue(&errors, failure_mode, #field_name) && !(#closure)(&#reference, #(#extra_args),*) {
+		  let _ref = &#reference;
+		  if can_continue(&errors, failure_mode, #field_name) && !(#closure)(_ref, #(#extra_args),*) {
 				let error = ValidationError::builder()
   			  .with_field(#field_name)
   			  .as_simple(#code)

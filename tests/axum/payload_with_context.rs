@@ -18,13 +18,14 @@ use crate::axum::mocks::{ImplMockedService, MockedService, get_state};
 
 #[derive(Debug, Deserialize, Serialize, Validate)]
 #[validate(context = Arc<dyn MockedService>, payload, axum)]
+#[wrapper_derive(Clone)]
 pub struct TestDTO {
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
 	#[validate(required("name is required"))]
 	pub name: String,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(email("invalid email format", "bad_format"))]
 	#[validate(custom_with_context(validate_unique_email))]
 	#[validate(inline(|_| true))]
@@ -35,15 +36,15 @@ pub struct TestDTO {
 	pub password: String,
 
 	#[special(from_type(String))]
-	#[modify(lowercase)]
-	#[modify(inline(|_| 3))]
+	#[modificate(lowercase)]
+	#[parse(inline(|_| 3))]
 	#[validate(range(3..=12))]
 	pub dependent_id: u16,
 
-	#[modify(trim)]
+	#[modificate(trim)]
 	#[validate(length(0..=254, "tag must not be more than 254 characters"))]
-	#[modify(snake_case)]
-	#[modify(custom(modify_tag))]
+	#[modificate(snake_case)]
+	#[modificate(custom(modificate_tag))]
 	pub tag: Option<String>,
 
 	#[special(from_type(RoleDTOWrapper))]
@@ -53,29 +54,31 @@ pub struct TestDTO {
 
 #[derive(Debug, Deserialize, Serialize, Default, Validate)]
 #[validate(payload, axum)]
+#[wrapper_derive(Clone)]
 pub struct RoleDTO {
 	#[special(from_type(Vec<String>))]
 	#[validate(length(1..=2))]
 	#[special(for_each(
  	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-    modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+    parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))),
     validate(inline(|x: &u32| *x > 1)),
- 	  modify(inline(|x| x + 1))
+ 	  modificate(inline(|x: &mut u32| *x += 1))
 	))]
 	pub permissions: Vec<u32>,
 
 	#[special(from_type(Vec<String>))]
 	#[special(for_each(
 	  config(from_item = String, from_collection = Vec<String>, to_collection = Vec<u32>),
-		modify(inline(|x: &str| ::serde_json::from_str::<u32>(x).unwrap_or(0))),
+		parse(inline(|x: String| x.parse::<u32>().unwrap_or(0))),
 	  validate(inline(|x: &u32| *x > 1)),
-		modify(inline(|x| x + 1))
+		modificate(inline(|x: &mut u32| *x += 1))
 	))]
 	pub alt_permissions: Vec<u32>,
 }
 
-fn modify_tag(tag: &str, _field_name: &str) -> (String, Option<ValidationError>) {
-	(tag.to_string() + "_modified", None)
+fn modificate_tag(tag: &mut String, _field_name: &str) -> Result<(), ValidationError> {
+	*tag = (tag.to_string() + "_modified").to_string();
+	Ok(())
 }
 
 fn validate_unique_email(

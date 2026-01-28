@@ -5,17 +5,17 @@ use validy::{assert_modification, assert_validation};
 
 #[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
-#[validate(modify)]
+#[validate(modificate)]
 struct Test {
-	#[modify(train_case)]
-	#[modify(train_case)]
+	#[modificate(train_case)]
+	#[modificate(train_case)]
 	pub a: String,
-	#[modify(train_case)]
+	#[modificate(train_case)]
 	pub b: Option<String>,
 }
 
 #[test]
-fn should_modify_train_cases() {
+fn should_modificate_train_cases() {
 	let cases = [
 		("", ""),
 		("hello", "Hello"),

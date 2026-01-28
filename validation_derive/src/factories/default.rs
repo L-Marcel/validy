@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
@@ -7,7 +7,7 @@ use crate::{
 		boilerplates::{defaults::get_default_factory_boilerplates, failure_mode::get_failure_mode_boilerplate},
 		core::AbstractValidationFactory,
 		extensions::defaults::get_default_extensions,
-		utils::defaults::DefaultsCodeFactory,
+		others::defaults::DefaultsCodeFactory,
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -15,7 +15,7 @@ use crate::{
 };
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Attribute, Ident, parse::ParseStream};
+use syn::{Ident, parse::ParseStream};
 
 pub struct ValidationFactory<'a> {
 	struct_name: &'a Ident,
@@ -33,8 +33,6 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		_: Vec<(Attribute, Option<Import>)>,
-		_: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -47,7 +45,7 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 		let extensions = get_default_extensions(self.struct_name, attributes, imports);
 
 		let operations = code_factory.operations();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
 		let boilerplates = get_default_factory_boilerplates(struct_name);
 		let failure_mode = get_failure_mode_boilerplate(attributes);
@@ -108,7 +106,8 @@ impl<'a> AbstractValidationFactory for ValidationFactory<'a> {
 			field.set_is_ref(false);
 			#[rustfmt::skip]
 			let result = quote! {
-			  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as Validate>::validate(&#reference) {
+			  let _ref = &#reference;
+			  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as Validate>::validate(_ref) {
 					let error = NestedValidationError::from(
 						e,
 						#field_name,

@@ -6,8 +6,9 @@ use validy::{
 };
 
 #[allow(unused)]
-#[derive(Debug, Deserialize, Validate, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Validate, PartialEq)]
 #[validate(payload)]
+#[wrapper_derive(Clone)]
 struct Test {
 	#[validate(required("custom message"))]
 	pub a: u8,
@@ -22,6 +23,7 @@ struct Test {
 #[allow(unused)]
 #[derive(Debug, Clone, Deserialize, Default, Validate, PartialEq)]
 #[validate(payload)]
+#[wrapper_derive(Clone, Copy)]
 struct NestedTest {
 	#[validate(required("custom message", "custom_code"))]
 	pub a: u8,
@@ -36,7 +38,7 @@ fn should_validate_and_parse_options() {
 		c: Some(NestedTestWrapper { a: None, b: Some(0) }),
 	};
 
-	let result = Test::validate_and_parse(&test);
+	let result = Test::validate_and_parse(test.clone());
 
 	assert_errors!(result, test, {
 		"a" => ("required", "custom message"),
@@ -46,7 +48,7 @@ fn should_validate_and_parse_options() {
 	});
 
 	test.a = Some(0);
-	let result = Test::validate_and_parse(&test);
+	let result = Test::validate_and_parse(test.clone());
 
 	assert_errors!(result, test, {
 		"c" => ("nested", validation_errors! {
@@ -55,14 +57,14 @@ fn should_validate_and_parse_options() {
 	});
 
 	test.c = None;
-	let result = Test::validate_and_parse(&test);
+	let result = Test::validate_and_parse(test.clone());
 
 	assert_errors!(result, test, {
 		"c" => ("custom_code", "is required")
 	});
 
 	test.c = Some(NestedTestWrapper { a: Some(0), b: None });
-	let result = Test::validate_and_parse(&test);
+	let result = Test::validate_and_parse(test.clone());
 
 	assert_parsed!(
 		result,

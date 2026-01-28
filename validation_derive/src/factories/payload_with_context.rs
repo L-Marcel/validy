@@ -7,7 +7,7 @@ use crate::{
 		},
 		core::AbstractValidationFactory,
 		extensions::payloads::get_payload_with_context_extensions,
-		utils::payloads::PayloadsCodeFactory,
+		others::{payloads::PayloadsCodeFactory, wrappers::WrapperFactory},
 	},
 	fields::FieldAttributes,
 	imports::Import,
@@ -16,12 +16,13 @@ use crate::{
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
 use quote::quote;
-use std::{cell::RefCell, collections::HashMap};
-use syn::{Attribute, Ident, Type, parse::ParseStream};
+use std::cell::RefCell;
+use syn::{DeriveInput, Ident, Type, parse::ParseStream};
 
 pub struct PayloadWithContextFactory<'a> {
 	struct_name: &'a Ident,
 	context_type: &'a Type,
+	wrapper_factory: WrapperFactory,
 }
 
 impl<'a> PayloadWithContextFactory<'a> {
@@ -29,18 +30,21 @@ impl<'a> PayloadWithContextFactory<'a> {
 		Self {
 			struct_name,
 			context_type,
+			wrapper_factory: WrapperFactory::default(),
 		}
 	}
 }
 
 impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
+	fn init(&mut self, input: &DeriveInput, attributes: &ValidationAttributes) {
+		self.wrapper_factory = WrapperFactory::from(input, attributes);
+	}
+
 	fn create(
 		&self,
 		mut fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		struct_attributes: Vec<(Attribute, Option<Import>)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output {
 		imports.borrow_mut().add(Import::ValidyCore);
 		imports.borrow_mut().add(Import::ValidySettings);
@@ -50,9 +54,9 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
 		let struct_name = self.struct_name;
 		let context_type = self.context_type;
 
+		let (wrapper_struct, wrapper_ident) = self.wrapper_factory.create(struct_name, &fields);
 		let mut code_factory = PayloadsCodeFactory(&mut fields);
-		let (wrapper_struct, wrapper_ident) =
-			code_factory.wrapper(struct_name, struct_attributes, fields_attributes, imports);
+
 		let extensions = get_payload_with_context_extensions(
 			self.struct_name,
 			attributes,
@@ -63,7 +67,7 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
 
 		let operations = code_factory.operations();
 		let commit = code_factory.commit();
-		let imports = imports.borrow().build();
+		let imports = imports.borrow().create();
 
 		let boilerplates = get_payload_with_context_factory_boilerplates(struct_name, &wrapper_ident, context_type);
 		let failure_mode = get_failure_mode_boilerplate(attributes);
@@ -76,7 +80,7 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
   		  #imports
 
   			impl ValidateAndParseWithContext<#wrapper_ident, #context_type> for #struct_name {
-         	fn validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+         	fn validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
     				let mut errors = ValidationErrors::new();
             let failure_mode = #failure_mode;
 
@@ -93,7 +97,7 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
         impl SpecificValidateAndParseWithContext for #struct_name {
           type Wrapper = #wrapper_ident;
           type Context = #context_type;
-     			fn specific_validate_and_parse_with_context(wrapper: &#wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
+     			fn specific_validate_and_parse_with_context(mut wrapper: #wrapper_ident, context: &#context_type) -> Result<Self, ValidationErrors> {
   					<#struct_name as ValidateAndParseWithContext<#wrapper_ident, #context_type>>::validate_and_parse_with_context(wrapper, context)
   			  }
   		  }
@@ -119,34 +123,62 @@ impl<'a> AbstractValidationFactory for PayloadWithContextFactory<'a> {
 			emit_error!(input.span(), "needs the wrapper type");
 		}
 
-		field.set_is_ref(false);
+		if field.is_ref() {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+        let mut #new_reference = #field_type::default();
+  			let result = if can_continue(&errors, failure_mode, #field_name) {
+          <#field_type as ValidateAndParseWithContext<#wrapper_type, #context_type>>::validate_and_parse_with_context(*#reference, context)
+  			} else {
+          Ok(#field_type::default())
+  			};
 
-		#[rustfmt::skip]
-		let result = quote! {
-			let mut #new_reference = #field_type::default();
+  			match result {
+  			  Ok(value) => #new_reference = value,
+  				Err(e) =>  {
+    				let error = NestedValidationError::from(
+     					e,
+     					#field_name,
+    				);
 
-			let result = if can_continue(&errors, failure_mode, #field_name) {
-        <#field_type as ValidateAndParseWithContext<#wrapper_type, #context_type>>::validate_and_parse_with_context(#reference.clone(), context)
-			} else {
-        Ok(#field_type::default())
-			};
+            append_error(&mut errors, error.into(), failure_mode, #field_name);
+            if should_fail_fast(&errors, failure_mode, #field_name) {
+         			return Err(errors);
+         	  }
+  			  },
+  			}
+  		};
 
-			match result {
-			  Ok(value) => #new_reference = value,
-				Err(e) =>  {
-  				let error = NestedValidationError::from(
-  					e,
-  					#field_name,
-  				);
+			result
+		} else {
+			field.set_is_ref(false);
+			#[rustfmt::skip]
+  		let result = quote! {
+        let mut #new_reference = #field_type::default();
+  			let result = if can_continue(&errors, failure_mode, #field_name) {
+          <#field_type as ValidateAndParseWithContext<#wrapper_type, #context_type>>::validate_and_parse_with_context(#reference, context)
+  			} else {
+          Ok(#field_type::default())
+  			};
 
-          append_error(&mut errors, error.into(), failure_mode, #field_name);
-          if should_fail_fast(&errors, failure_mode, #field_name) {
-       			return Err(errors);
-       	  }
-			  },
-			}
-		};
+  			match result {
+  			  Ok(value) => #new_reference = value,
+  				Err(e) =>  {
+    				let error = NestedValidationError::from(
+     					e,
+     					#field_name,
+    				);
 
-		result
+            append_error(&mut errors, error.into(), failure_mode, #field_name);
+            if should_fail_fast(&errors, failure_mode, #field_name) {
+         			return Err(errors);
+         	  }
+  			  },
+  			}
+  		};
+
+			result
+		}
 	}
 }

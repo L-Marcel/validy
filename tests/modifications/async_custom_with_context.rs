@@ -1,74 +1,77 @@
 use validy::core::{AsyncValidateAndParseWithContext, Validate, ValidationError};
-
 use validy::{assert_errors, assert_parsed, validation_error};
 
 #[allow(unused)]
-#[derive(Debug, Default, Validate, PartialEq)]
+#[derive(Debug, Validate, PartialEq)]
 #[validate(payload, asynchronous, context = bool)]
+#[wrapper_derive(Clone)]
 struct Test {
-	#[modify(async_custom_with_context(modify))]
+	#[modificate(async_custom_with_context(modificate))]
 	pub a: String,
-	#[modify(async_custom_with_context(modify_two, [&wrapper.a]))]
+	#[modificate(async_custom_with_context(modificate_two, [&tmp_1_a]))]
 	pub b: Option<String>,
-	#[modify(async_custom_with_context(modify_three, [&wrapper.a, &wrapper.b]))]
+	#[modificate(async_custom_with_context(modificate_three, [&tmp_1_a, &tmp_1_b]))]
 	pub c: Option<String>,
 }
 
-async fn modify(value: &str, _field_name: &str, context: &bool) -> (String, Option<ValidationError>) {
+async fn modificate(value: &mut String, _field_name: &str, context: &bool) -> Result<(), ValidationError> {
 	if *context {
-		(value.to_string() + "_test", None)
-	} else {
-		(value.to_string(), None)
-	}
+		*value = (value.to_string() + "_test").to_string();
+	};
+
+	Ok(())
 }
 
-async fn modify_two(
-	value: &str,
+async fn modificate_two(
+	value: &mut String,
 	_field_name: &str,
 	context: &bool,
 	extra_arg: &Option<String>,
-) -> (String, Option<ValidationError>) {
+) -> Result<(), ValidationError> {
 	if *context {
-		(extra_arg.clone().unwrap_or(value.to_string()), None)
-	} else {
-		(value.to_string(), None)
+		*value = extra_arg.clone().unwrap_or(value.to_string());
 	}
+
+	Ok(())
 }
 
-async fn modify_three(
-	value: &str,
+async fn modificate_three(
+	value: &mut String,
 	field_name: &str,
 	_context: &bool,
 	a: &Option<String>,
 	b: &Option<String>,
-) -> (String, Option<ValidationError>) {
+) -> Result<(), ValidationError> {
 	match (a, b) {
-		(_, None) => (
-			value.to_string(),
-			Some(validation_error!(
-				field_name.to_string(),
-				"custom_code",
-				"custom message"
-			)),
-		),
-		(Some(a), _) => (a.to_string(), None),
-		(None, Some(b)) => (b.to_string(), None),
+		(_, None) => Err(validation_error!(
+			field_name.to_string(),
+			"custom_code",
+			"custom message"
+		)),
+		(Some(a), _) => {
+			*value = a.to_string().clone();
+			Ok(())
+		}
+		(None, Some(b)) => {
+			*value = b.to_string().clone();
+			Ok(())
+		}
 	}
 }
 
 #[tokio::test]
-async fn should_modify_async_customs_with_context() {
+async fn should_modificate_async_customs_with_context() {
 	let cases = [("a", false, "a"), ("b", true, "b_test"), ("c", true, "c_test")];
 
 	let mut wrapper = TestWrapper::default();
-	let mut result = Test::async_validate_and_parse_with_context(&wrapper, &true).await;
+	let mut result = Test::async_validate_and_parse_with_context(wrapper.clone(), &true).await;
 	assert_errors!(result, wrapper, {
 		"a" => ("required", "is required"),
 	});
 
 	for (case, context, expected) in cases.iter() {
 		wrapper.a = Some(case.to_string());
-		result = Test::async_validate_and_parse_with_context(&wrapper, context).await;
+		result = Test::async_validate_and_parse_with_context(wrapper.clone(), context).await;
 
 		assert_parsed!(
 			result,
@@ -81,20 +84,20 @@ async fn should_modify_async_customs_with_context() {
 		);
 	}
 
-	let last_a = result.expect("should be a valid result").a;
-	for (case, context, _) in cases.iter() {
+	for (case, context, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::async_validate_and_parse_with_context(&wrapper, context).await;
+		result = Test::async_validate_and_parse_with_context(wrapper.clone(), context).await;
 
 		let expected = if *context {
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
 				c: None,
 			}
 		} else {
 			Test {
-				a: last_a.clone().replace("_test", ""),
+				a: expected.to_string(),
 				b: Some(case.to_string()),
 				c: None,
 			}
@@ -105,26 +108,28 @@ async fn should_modify_async_customs_with_context() {
 
 	wrapper.c = Some("".to_string());
 	wrapper.b = None;
-	result = Test::async_validate_and_parse_with_context(&wrapper, &true).await;
+	result = Test::async_validate_and_parse_with_context(wrapper.clone(), &true).await;
 	assert_errors!(result, wrapper, {
 	  "c" => ("custom_code", "custom message")
 	});
 
-	for (case, context, _) in cases.iter() {
+	for (case, context, expected) in cases.iter() {
+		wrapper.a = Some(case.to_string());
 		wrapper.b = Some(case.to_string());
-		result = Test::async_validate_and_parse_with_context(&wrapper, context).await;
+		wrapper.c = Some(case.to_string());
+		result = Test::async_validate_and_parse_with_context(wrapper.clone(), context).await;
 
 		let expected = if *context {
 			Test {
-				a: last_a.clone(),
-				b: Some(last_a.clone().replace("_test", "")),
-				c: Some(last_a.clone().replace("_test", "")),
+				a: expected.to_string(),
+				b: Some(expected.to_string()),
+				c: Some(expected.to_string()),
 			}
 		} else {
 			Test {
-				a: last_a.clone().replace("_test", ""),
+				a: expected.to_string(),
 				b: Some(case.to_string()),
-				c: Some(last_a.clone().replace("_test", "")),
+				c: Some(expected.to_string()),
 			}
 		};
 

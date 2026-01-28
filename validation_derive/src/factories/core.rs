@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use crate::{
 	ImportsSet, Output,
@@ -13,20 +13,20 @@ use crate::{
 		with_context::ValidationWithContextFactory,
 	},
 	fields::FieldAttributes,
-	imports::Import,
 };
 use proc_macro2::TokenStream;
-use syn::{Attribute, Ident, parse::ParseStream};
+use syn::{DeriveInput, Ident, parse::ParseStream};
 
 pub trait AbstractValidationFactory {
+	fn init(&mut self, _input: &DeriveInput, _attributes: &ValidationAttributes) {}
+
 	fn create(
 		&self,
 		fields: Vec<FieldAttributes>,
 		attributes: &ValidationAttributes,
 		imports: &RefCell<ImportsSet>,
-		struct_attributes: Vec<(Attribute, Option<Import>)>,
-		fields_attributes: HashMap<String, Vec<(Attribute, Option<Import>)>>,
 	) -> Output;
+
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream;
 }
 
@@ -37,7 +37,7 @@ pub fn get_factory<'a>(
 	match (
 		&attributes.context,
 		&attributes.asynchronous,
-		&attributes.modify,
+		&attributes.modificate,
 		&attributes.payload,
 	) {
 		(Some(context), true, false, false) => Box::new(AsyncValidationWithContextFactory::new(name, context)),

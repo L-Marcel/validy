@@ -30,8 +30,6 @@ impl ArgParser for InlineModificationArgs {
 
 pub fn create_inline_modification(input: ParseStream, field: &mut FieldAttributes) -> TokenStream {
 	let reference = field.get_reference();
-	field.increment_modifications();
-	let new_reference = field.get_reference();
 	let content = remove_parens(input);
 
 	let InlineModificationArgs { closure, params } = match content {
@@ -50,13 +48,11 @@ pub fn create_inline_modification(input: ParseStream, field: &mut FieldAttribute
 	let field_name = field.get_name();
 
 	if field.is_ref() {
-		field.set_is_ref(false);
+		field.set_is_ref(true);
 		#[rustfmt::skip]
 		let result = quote! {
-			let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-			  (#closure)(#reference, #(#extra_args),*)
-      } else {
-        Default::default()
+			if can_continue(&errors, failure_mode, #field_name) {
+			  (#closure)(#reference, #(#extra_args),*);
       };
 		};
 
@@ -65,10 +61,9 @@ pub fn create_inline_modification(input: ParseStream, field: &mut FieldAttribute
 		field.set_is_ref(false);
 		#[rustfmt::skip]
 		let result = quote! {
-      let mut #new_reference = if can_continue(&errors, failure_mode, #field_name) {
-        (#closure)(&#reference, #(#extra_args),*)
-      } else {
-        Default::default()
+      if can_continue(&errors, failure_mode, #field_name) {
+        let _ref = &mut #reference;
+        (#closure)(_ref, #(#extra_args),*);
       };
 		};
 
