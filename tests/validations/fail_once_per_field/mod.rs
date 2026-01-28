@@ -9,3 +9,7 @@ pub mod blocklist;
 pub mod contains;
 pub mod custom;
 pub mod custom_with_context;
+pub mod email;
+pub mod field_content_type;
+pub mod field_file_name;
+pub mod field_name;
