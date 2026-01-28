@@ -3,7 +3,6 @@ use validy::core::{Validate, ValidateAndModificate};
 
 use validy::{assert_modification, assert_validation};
 
-#[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
 #[validate(modificate)]
 struct Test {

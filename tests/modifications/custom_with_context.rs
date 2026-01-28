@@ -2,7 +2,6 @@ use validy::core::{Validate, ValidateAndParseWithContext, ValidationError};
 
 use validy::{assert_errors, assert_parsed, validation_error};
 
-#[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 #[validate(payload, context = bool)]
 #[wrapper_derive(Debug, Clone)]

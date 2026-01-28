@@ -5,7 +5,6 @@ use validy::core::Validate;
 
 use validy::{assert_errors, assert_validation};
 
-#[allow(unused)]
 #[derive(Debug, Default, Deserialize, Validate, PartialEq)]
 struct Test {
 	#[validate(length(0..5))]

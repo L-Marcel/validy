@@ -6,7 +6,6 @@ use validy::{assert_errors, assert_validation};
 
 use crate::utils::field_data::create_field_data_with_temp_file;
 
-#[allow(unused)]
 #[derive(Debug, Validate)]
 struct Test {
 	#[validate(field_file_name(r"^[a-zA-Z0-9._-]+$"))]
