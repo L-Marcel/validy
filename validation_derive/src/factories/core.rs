@@ -9,7 +9,7 @@ use crate::{
 		asynchronous_payload::AsyncPayloadFactory, asynchronous_payload_with_context::AsyncPayloadWithContextFactory,
 		asynchronous_with_context::AsyncValidationWithContextFactory, default::ValidationFactory,
 		modification::ModificationFactory, modification_with_context::ModificationWithContextFactory,
-		payload::PayloadFactory, payload_with_context::PayloadWithContextFactory,
+		others::wrappers::WrapperFactory, payload::PayloadFactory, payload_with_context::PayloadWithContextFactory,
 		with_context::ValidationWithContextFactory,
 	},
 	fields::FieldAttributes,
@@ -18,7 +18,9 @@ use proc_macro2::TokenStream;
 use syn::{DeriveInput, Ident, parse::ParseStream};
 
 pub trait AbstractValidationFactory {
-	fn init(&mut self, _input: &DeriveInput, _attributes: &ValidationAttributes) {}
+	fn init(&mut self, input: &DeriveInput, attributes: &ValidationAttributes) {
+		let _ = WrapperFactory::from(input, attributes);
+	}
 
 	fn create(
 		&self,

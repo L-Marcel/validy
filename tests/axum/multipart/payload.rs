@@ -64,7 +64,6 @@ pub struct TestDTO {
 
 #[derive(Debug, Clone, TryFromMultipart, Deserialize, Serialize, Default, Validate)]
 #[validate(modificate, axum, multipart)]
-#[wrapper_derive(Debug)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(

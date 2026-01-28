@@ -329,18 +329,17 @@ This method is `thread-safe`. The default status code is `BAD_REQUEST`.
 
 ### Multipart support
 
-When you enable the `axum_multipart` feature, the library automatically generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled. But you should still use `TryFromMultipart`.
+When you enable the `axum_multipart` feature, the library automatically add `TryFromMultipart` macro derive to the wrapper and generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled.
 
 ```rust
 use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
 use validy::core::{Validate, ValidateAndParse, ValidationError};
 use std::{sync::Arc, fmt::Debug};
 use tempfile::NamedTempFile;
-use axum_typed_multipart::{FieldData, TryFromMultipart};
+use axum_typed_multipart::{FieldData};
 
 #[derive(Debug, Validate)]
 #[validate(asynchronous, context = Arc<dyn UserService>, payload, axum, multipart)]
-#[wrapper_derive(TryFromMultipart)]
 pub struct CreateUserDTO {
   #[wrapper_attribute(form_data(limit = "10MB"))]
   #[validate(field_content_type(r"^(image/.*)$"))] //requires `axum_multipart_field_data` feature yet
@@ -614,7 +613,7 @@ Wrappers are generated structs similar to the original struct where all fields a
 The name of the wrapper struct is the name of the origional struct with the suffix 'Wrapper'. For example, `CreateUserDTO` generates a public wrapper named `CreateUserDTOWrapper`. The generated wrapper is left exposed for you to use. You also can use `#[wrapper_derive(...)]` struct attribute in the origional struct to apply derive macros on the wrapper and `#[wrapper_attribute(...)]` attribute in the origional struct to apply attributes on the wrapper.
 
 ```rust
-use axum_typed_multipart::{FieldData, TryFromMultipart};
+use axum_typed_multipart::FieldData;
 use serde::Serialize;
 use tempfile::NamedTempFile;
 use validy::core::Validate;
