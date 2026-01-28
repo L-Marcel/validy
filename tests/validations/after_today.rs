@@ -3,7 +3,6 @@ use validy::core::Validate;
 
 use validy::{assert_errors, assert_validation};
 
-#[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 struct Test {
 	#[validate(after_today(true))]

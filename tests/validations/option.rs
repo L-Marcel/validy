@@ -5,7 +5,6 @@ use validy::{
 	validation_errors,
 };
 
-#[allow(unused)]
 #[derive(Debug, Clone, Deserialize, Validate, PartialEq)]
 #[validate(payload)]
 #[wrapper_derive(Debug, Clone)]
@@ -20,7 +19,6 @@ struct Test {
 	pub c: NestedTest,
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone, Deserialize, Default, Validate, PartialEq)]
 #[validate(payload)]
 #[wrapper_derive(Debug, Clone, Copy)]

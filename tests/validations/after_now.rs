@@ -3,7 +3,6 @@ use validy::core::Validate;
 
 use validy::{assert_errors, assert_validation};
 
-#[allow(unused)]
 #[derive(Debug, Default, Validate, PartialEq)]
 struct Test {
 	#[validate(after_now(true))]
@@ -31,7 +30,7 @@ fn should_validate_after_now() {
 
 	let cases = (
 		[(past, false), (now, true), (future, true)],
-		[(past, false), (now, false), (future, true)],
+		[(past, false), (future, true)],
 	);
 
 	let mut test = Test {

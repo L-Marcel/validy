@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "validy"
-version = "1.1.17"
+version = "1.1.18"
 edition = "2024"
 description = "A powerful and flexible Rust library based on procedural macros for validation, modification, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with Axum. Inspired by Validator, Validify and Garde."
 license = "MIT"
@@ -17,7 +17,7 @@ categories = ["web-programming", "data-structures", "parsing"]
 exclude = [".github/", ".gitignore", "expand.sh", "tests/", "temp/"]
 
 [dependencies]
-validation_derive = { path = "validation_derive", version = "1.1.9", optional = true }
+validation_derive = { path = "validation_derive", version = "1.1.10", optional = true }
 email_address = { version = "0.2.9", optional = true }
 serde = { version = "1.0.228", features = ["derive"], optional = true }
 async-trait = "0.1.89"

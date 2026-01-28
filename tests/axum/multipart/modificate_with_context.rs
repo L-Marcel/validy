@@ -22,7 +22,6 @@ use crate::utils::multipart_body::build_multipart_body;
 
 #[derive(Debug, TryFromMultipart, Validate, Serialize)]
 #[validate(context = Arc<dyn MockedService>, modificate, axum, multipart)]
-#[wrapper_derive(Debug)]
 pub struct TestDTO {
 	#[special(ignore)]
 	#[serde(skip)]
@@ -60,7 +59,6 @@ pub struct TestDTO {
 
 #[derive(Debug, Clone, Deserialize, TryFromMultipart, Serialize, Default, Validate)]
 #[validate(modificate, axum, multipart)]
-#[wrapper_derive(Debug)]
 pub struct RoleDTO {
 	#[validate(length(1..=2))]
 	#[special(for_each(

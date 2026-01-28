@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
+use proc_macro_error::emit_error;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{
 	AttrStyle, Attribute, DeriveInput, Fields, Ident, Meta, Path, Token, parse_quote,
 	punctuated::Punctuated,
+	spanned::Spanned,
 	token::{Bracket, Pound},
 };
 
@@ -23,6 +25,30 @@ impl WrapperFactory {
 		let struct_attributes = get_attributes_by_structs(&input.attrs);
 		let fields_attributes = get_attributes_by_fields(fields);
 		let mut struct_derives = get_derives_by_structs(&input.attrs);
+
+		if !attributes.payload {
+			struct_attributes.iter().for_each(|attribute| {
+				emit_error!(
+					attribute.span(),
+					"wrapper_attribute is useless when payload is disabled"
+				)
+			});
+
+			fields_attributes.iter().for_each(|(_, attributes)| {
+				attributes.iter().for_each(|attribute| {
+					emit_error!(
+						attribute.span(),
+						"wrapper_attribute is useless when payload is disabled"
+					)
+				})
+			});
+
+			struct_derives.iter().for_each(|attribute| {
+				emit_error!(attribute.span(), "wrapper_derive is useless when payload is disabled")
+			});
+
+			return WrapperFactory::default();
+		}
 
 		let native_derives = if attributes.multipart {
 			vec![

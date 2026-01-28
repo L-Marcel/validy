@@ -96,7 +96,7 @@ fn modificate_code(code: &mut String, _field_name: &str) -> Result<(), Validatio
 }
 
 #[test]
-pub fn should_validate() {
+fn should_validate() {
 	let mut wrapper = CreateUserDTOWrapper {
 		name: None,
 		email: Some("test@gmail.com".to_string()),
@@ -329,18 +329,17 @@ This method is `thread-safe`. The default status code is `BAD_REQUEST`.
 
 ### Multipart support
 
-When you enable the `axum_multipart` feature, the library automatically generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled. But you should still use `TryFromMultipart`.
+When you enable the `axum_multipart` feature, the library automatically generates the `FromRequest` implementation for your `struct` with `axum_typed_multipart` if it has the `multipart` configuration attribute enabled. But you still need to add `TryFromMultipart` macro derive if `payload` is disabled.
 
 ```rust
 use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
 use validy::core::{Validate, ValidateAndParse, ValidationError};
 use std::{sync::Arc, fmt::Debug};
 use tempfile::NamedTempFile;
-use axum_typed_multipart::{FieldData, TryFromMultipart};
+use axum_typed_multipart::{FieldData};
 
 #[derive(Debug, Validate)]
 #[validate(asynchronous, context = Arc<dyn UserService>, payload, axum, multipart)]
-#[wrapper_derive(TryFromMultipart)]
 pub struct CreateUserDTO {
   #[wrapper_attribute(form_data(limit = "10MB"))]
   #[validate(field_content_type(r"^(image/.*)$"))] //requires `axum_multipart_field_data` feature yet
@@ -444,7 +443,7 @@ The crate's behavior can be adjusted in your `Cargo.toml`.
 | `time` | Enables time rules. | `dep:chrono` |
 | `axum` | Enables Axum integration. | `dep:axum`, `derive` |
 | `axum_multipart` | Enables multipart support. | `axum_typed_multipart`, `axum` |
-| `axum_multipart_field_data` | Enables multipart field data rules " | `axum_multipart`, `pattern` |
+| `axum_multipart_field_data` | Enables multipart field data rules. | `axum_multipart`, `pattern` |
 | `macro_rules` | Enables macros for validation errors. | |
 | `macro_rules_assertions` | Enables macros for assertions (tests). | `dep:pretty_assertions` |
 
@@ -602,19 +601,19 @@ Primitive rules for the `#[special(...)]` attribute.
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `nested`(value = <type>, wrapper = <?type>) | Validates the fields of a nested struct. Warning: cyclical references can cause compilation issues. |
+| `nested`(value = <type>, wrapper = <?type>, code = <?string>) | Validates the fields of a nested struct. Warning: cyclical references can cause compilation issues. |
 | `ignore` | Ignores any validation or modification rule. |
 | `for_each`(config?(from_item = <?type>, to_collection = <?type>, from_collection = <?type>), \<rule>) | Applies validation rules to every element in a collection. The `from_item` arg from the optional `config` rule defines the type of each collection item. The `to_collection` arg defines the final type of the collection, and the `from_collection` arg defines the initial type. It's like a `from_type` adapter for collections. |
 | `from_type`(value = <?type>) | Defines the type of the field in the wrapper. Must be defined before all other rules on a field. |
 
 ## 📨 Wrappers
 
-Wrappers are generated structs similar to the original struct where all fields are covered with `Option`. They all have the `Default` and `Debug` derive macros by default. And when the `multipart` configuration attribute is disabled, they also implement `Deserialize`. Ultimately, the only reason I could think of for having all optional fields was the deserialization and validation of required fields with custom errors.
+Wrappers are generated structs similar to the original struct where all fields are covered with `Option`. They all have the `Default` derive macros by default. When the `multipart` configuration attribute is enabled, they also has `TryFromMultipart` derive macro, otherwise, they has `Deserialize` derive macro.
 
 The name of the wrapper struct is the name of the origional struct with the suffix 'Wrapper'. For example, `CreateUserDTO` generates a public wrapper named `CreateUserDTOWrapper`. The generated wrapper is left exposed for you to use. You also can use `#[wrapper_derive(...)]` struct attribute in the origional struct to apply derive macros on the wrapper and `#[wrapper_attribute(...)]` attribute in the origional struct to apply attributes on the wrapper.
 
 ```rust
-use axum_typed_multipart::{FieldData, TryFromMultipart};
+use axum_typed_multipart::FieldData;
 use serde::Serialize;
 use tempfile::NamedTempFile;
 use validy::core::Validate;
@@ -856,18 +855,9 @@ If the examples aren't enough, I've included a more complete and documented exam
 
 ## 🎯 Work In Progress
 
-Some of these features are available now, but are only partially finished. I will document them fully once they are complete.
-
-- [x] More test coverage.
-- [x] Custom validation status code.
-- [x] Typed multipart/form-data validation support.
-  - [x] File validation rules.
-- [x] Validation rules for uuid.
-- [x] Better documentation.
-- [ ] Fully support for external crates field and structs attributes.
-- [ ] Failure mode.
+- [ ] Failure mode test coverage.
   - The current default is `FailOncePerField` (covered by the tests).
-- [ ] Validation rules for decimal (maybe).
+- [ ] Parse ips.
 
 ## 🎁 For Developers
 

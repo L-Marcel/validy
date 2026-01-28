@@ -1,7 +1,6 @@
 use validy::core::{AsyncValidateAndParseWithContext, Validate, ValidationError};
 use validy::{assert_errors, assert_parsed, validation_error};
 
-#[allow(unused)]
 #[derive(Debug, Validate, PartialEq)]
 #[validate(payload, asynchronous, context = bool)]
 #[wrapper_derive(Debug, Clone)]
