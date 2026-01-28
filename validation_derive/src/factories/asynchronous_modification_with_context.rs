@@ -14,7 +14,7 @@ use crate::{
 	},
 	fields::FieldAttributes,
 	imports::Import,
-	primitives::specials::nested::get_nested_type,
+	primitives::specials::nested::get_nested,
 };
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -100,7 +100,7 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 	fn create_nested(&self, input: ParseStream, field: &mut FieldAttributes) -> TokenStream {
 		let reference = field.get_reference();
 		let field_name = field.get_name();
-		let (field_type, _) = get_nested_type(input);
+		let (field_type, _, nested_code) = get_nested(input);
 		let context_type = self.context_type;
 
 		if field.is_ref() {
@@ -108,9 +108,10 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
 			#[rustfmt::skip]
   		let result = quote! {
   		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(#reference, context).await {
-  				let error = NestedValidationError::from(
+  				let error = NestedValidationError::from_with_code(
   					e,
   					#field_name,
+            #nested_code
   				);
 
   			  append_error(&mut errors, error.into(), failure_mode, #field_name);
@@ -127,9 +128,10 @@ impl<'a> AbstractValidationFactory for AsyncModificationWithContextFactory<'a> {
   		let result = quote! {
   		  let _ref = &mut #reference;
   		  if can_continue(&errors, failure_mode, #field_name) && let Err(e) = <#field_type as AsyncValidateAndModificateWithContext<#context_type>>::async_validate_and_modificate_with_context(_ref, context).await {
-  				let error = NestedValidationError::from(
+  				let error = NestedValidationError::from_with_code(
   					e,
   					#field_name,
+            #nested_code
   				);
 
   			  append_error(&mut errors, error.into(), failure_mode, #field_name);

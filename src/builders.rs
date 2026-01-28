@@ -26,6 +26,15 @@ impl ValidationErrorBuilderWithField {
 	pub fn as_nested(self) -> NestedValidationErrorBuilder {
 		NestedValidationErrorBuilder {
 			field: self.field,
+			code: "nested".into(),
+			errors: ValidationErrors::new(),
+		}
+	}
+
+	pub fn as_nested_with_code(self, code: impl Into<Cow<'static, str>>) -> NestedValidationErrorBuilder {
+		NestedValidationErrorBuilder {
+			field: self.field,
+			code: code.into(),
 			errors: ValidationErrors::new(),
 		}
 	}
@@ -54,6 +63,7 @@ impl SimpleValidationErrorBuilder {
 
 pub struct NestedValidationErrorBuilder {
 	pub(super) field: Cow<'static, str>,
+	pub(super) code: Cow<'static, str>,
 	pub(super) errors: ValidationErrors,
 }
 
@@ -74,6 +84,6 @@ impl NestedValidationErrorBuilder {
 	}
 
 	pub fn build(self) -> NestedValidationError {
-		NestedValidationError::from(self.errors, self.field)
+		NestedValidationError::from_with_code(self.errors, self.field, self.code)
 	}
 }

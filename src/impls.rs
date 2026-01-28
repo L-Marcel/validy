@@ -12,12 +12,34 @@ impl NestedValidationError {
 		}
 	}
 
+	pub fn from_with_code(
+		errors: ValidationErrors,
+		field: impl Into<Cow<'static, str>>,
+		code: impl Into<Cow<'static, str>>,
+	) -> Self {
+		NestedValidationError {
+			field: field.into(),
+			code: code.into(),
+			errors,
+		}
+	}
+
 	pub fn new(field: impl Into<Cow<'static, str>>) -> Self {
 		let errors = HashMap::<Cow<'static, str>, Vec<ValidationError>>::new();
 
 		NestedValidationError {
 			field: field.into(),
 			code: "nested".into(),
+			errors,
+		}
+	}
+
+	pub fn new_with_code(field: impl Into<Cow<'static, str>>, code: impl Into<Cow<'static, str>>) -> Self {
+		let errors = HashMap::<Cow<'static, str>, Vec<ValidationError>>::new();
+
+		NestedValidationError {
+			field: field.into(),
+			code: code.into(),
 			errors,
 		}
 	}

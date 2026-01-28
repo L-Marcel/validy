@@ -11,7 +11,7 @@ use crate::{
 	},
 	fields::FieldAttributes,
 	imports::Import,
-	primitives::specials::nested::get_nested_type,
+	primitives::specials::nested::get_nested,
 };
 use proc_macro_error::emit_error;
 use proc_macro2::TokenStream;
@@ -107,7 +107,7 @@ impl<'a> AbstractValidationFactory for AsyncPayloadFactory<'a> {
 		field.increment_modifications();
 		let new_reference = field.get_reference();
 		let field_name = field.get_name();
-		let (field_type, wrapper_type) = get_nested_type(input);
+		let (field_type, wrapper_type, nested_code) = get_nested(input);
 
 		if wrapper_type.is_none() {
 			emit_error!(input.span(), "needs the wrapper type");
@@ -127,9 +127,10 @@ impl<'a> AbstractValidationFactory for AsyncPayloadFactory<'a> {
   			match result {
   			  Ok(value) => #new_reference = value,
   				Err(e) =>  {
-    				let error = NestedValidationError::from(
+    				let error = NestedValidationError::from_with_code(
      					e,
      					#field_name,
+              #nested_code
     				);
 
   			    append_error(&mut errors, error.into(), failure_mode, #field_name);
@@ -155,9 +156,10 @@ impl<'a> AbstractValidationFactory for AsyncPayloadFactory<'a> {
   			match result {
   			  Ok(value) => #new_reference = value,
   				Err(e) =>  {
-    				let error = NestedValidationError::from(
+    				let error = NestedValidationError::from_with_code(
      					e,
      					#field_name,
+              #nested_code
     				);
 
   			    append_error(&mut errors, error.into(), failure_mode, #field_name);
