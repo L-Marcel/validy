@@ -11,6 +11,8 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [🚀 Quick Start](#-quick-start)
 - [📓 Glossary](#-glossary)
 - [🔎 About Implementations](#-about-implementations)
+  - [Failure modes](#failure-modes)
+  - [Caching regex](#caching-regex)
 - [🔌 Axum Integration](#-axum-integration)
   - [Customizing the failure `status code`](#customizing-the-failure-status-code)
   - [Multipart support](#multipart-support)
@@ -165,6 +167,69 @@ I decided to avoid unnecessary `.clone()` calls for performance. Practically all
 
 It was also inevitable that the `parse` field attribute returns new values.
 
+### Failure modes
+
+Currently, there are four failure modes available. However, only one is covered by the tests (I will expand the coverage later). The options are:
+
+- `FailureMode::FailOncePerField` 
+  - Currently the standard value, and also covered by the tests.
+  - As soon as an error is caught in a field, it moves on to another field.
+- `FailureMode::FailFast` 
+  - As soon as an error is caught, it stops validation and throws it. 
+  - It is expected to be the most performant mode for this reason.
+- `FailureMode::LastFailPerField` 
+  - Keeps only the last error caught for each field.
+- `FailureMode::FullFail` 
+  - Captures all errors.
+
+You can change the default failure mode calling:
+
+```rust
+use validy::settings::{FailureMode, ValidationSettings};
+
+ValidationSettings::set_failure_mode(FailureMode::FailFast);
+assert_eq!(ValidationSettings::get_failure_mode(), FailureMode::FailFast);
+```
+
+This method is `thread-safe`. Alternatively:
+
+```rust
+use validy::core::Validate;
+use std::fmt::Debug;
+
+#[derive(Debug, Validate)]
+#[validate(payload, axum, failure_mode = FailFast)]
+//------------------------^^^^^^^^^^^^^^^^^^^^^^^ Overrides the settings
+pub struct CreateUserDTO {
+	#[modificate(trim)]
+	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	pub name: String,
+	
+	//...
+}
+```
+
+### Caching regex
+
+Build regex for each request is slow. When `pattern` feature is enabled, not only are rules that use regex available, but also their cache settings. You can change calling:
+
+```rust
+use validy::settings::ValidationSettings;
+use moka::sync::Cache;
+use regex::Regex;
+use std::{borrow::Cow, sync::Arc};
+
+let cache = Cache::<Cow<'static, str>, Arc<Regex>>::builder()
+	.max_capacity(100)
+	.initial_capacity(10)
+	.build();
+
+ValidationSettings::set_regex_cache(cache);
+let _ = ValidationSettings::get_regex_cache();
+```
+
+This method is `thread-safe`. The default value is what is shown in this example.
+
 ## 🔌 Axum Integration
 
 When you enable the `axum` feature, the library automatically generates the `FromRequest` implementation for your `struct` if it has the `axum` configuration attribute enabled. The automated flow is as follows:
@@ -254,6 +319,10 @@ use axum::http::StatusCode;
 
 ValidationSettings::set_failure_status_code(StatusCode::UNPROCESSABLE_ENTITY);
 assert_eq!(ValidationSettings::get_failure_status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+
+// For multipart
+ValidationSettings::set_failure_multipart_status_code(StatusCode::UNPROCESSABLE_ENTITY);
+assert_eq!(ValidationSettings::get_failure_multipart_status_code(), StatusCode::UNPROCESSABLE_ENTITY);
 ```
 
 This method is `thread-safe`. The default status code is `BAD_REQUEST`.
@@ -781,9 +850,9 @@ Some of these features are available now, but are only partially finished. I wil
   - [x] File validation rules.
 - [x] Validation rules for uuid.
 - [x] Better documentation.
+- [ ] Fully support for external crates field and structs attributes.
 - [ ] Failure mode.
   - The current default is `FailOncePerField` (covered by the tests).
-- [ ] Fully support for external crates field and structs attributes.
 - [ ] Validation rules for decimal (maybe).
 
 ## 🎁 For Developers

@@ -11,7 +11,7 @@ use std::sync::OnceLock;
 #[cfg(feature = "pattern")]
 use std::{borrow::Cow, sync::Arc};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum FailureMode {
 	FailFast,
 	FailOncePerField,
