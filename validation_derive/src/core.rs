@@ -43,7 +43,10 @@ use crate::{
 			inline_modification::create_inline_modification, inline_parse::create_inline_parse,
 			inline_validation::create_inline_validation,
 		},
-		ips::{ip::create_ip, ipv4::create_ipv4, ipv6::create_ipv6},
+		ips::{
+			ip::create_ip, ipv4::create_ipv4, ipv6::create_ipv6, parse_ip::create_ip_parse,
+			parse_ipv4::create_ipv4_parse, parse_ipv6::create_ipv6_parse,
+		},
 		option::required::create_required,
 		patterns::{
 			contains::create_contains, email::create_email, pattern::create_pattern, prefix::create_prefix,
@@ -244,6 +247,9 @@ pub fn get_parse_by_attr_macro(
 		m if m.path.is_ident("async_custom_with_context") => {
 			create_async_custom_with_context_parse(m.input, field, attributes)
 		}
+		m if m.path.is_ident("ip") => create_ip_parse(m.input, field, imports),
+		m if m.path.is_ident("ipv4") => create_ipv4_parse(m.input, field, imports),
+		m if m.path.is_ident("ipv6") => create_ipv6_parse(m.input, field, imports),
 		m if m.path.is_ident("uuid") => create_uuid_parse(m.input, field, imports),
 		m if m.path.is_ident("time") => create_time_parse(m.input, field, imports),
 		m if m.path.is_ident("naive_time") => create_naive_time_parse(m.input, field, imports),

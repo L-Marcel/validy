@@ -32,7 +32,8 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [Custom rules](#custom-rules-1)
 - [🔧 Parsing Rules](#-parsing-rules)
   - [For `uuid` fields](#for-uuid-fields)
-  - [For `date` or `time` fields](#for-date-or-time-fields-1)
+  - [For `date` or `time` fields](#for-date-or-time-fields-1)  
+  - [For `ip` fields](#for-ip-fields)
   - [Custom rules](#custom-rules-2)
 - [🔮 Special Rules](#-special-rules)
 - [📨 Wrappers](#-wrappers)
@@ -563,11 +564,17 @@ All rules prefixed with `async_` require the `asynchronous` configuration attrib
 
 Primitive rules for the `#[parse(...)]` attribute. These all require either the `payload` attribute to be enabled on the struct.
 
+All of these rules were created to be used with `#[special(from_type(String))]` declared before them.
+
 > The '?' indicates that the argument is optional.
 
-### For `date` or `time` fields
+### For `uuid` fields
 
-All of these rules were created to be used with `#[special(from_type(String))]` declared before them.
+| **Rule** | **Description** |
+| :-------- | :------- |
+| `parse_uuid` | Validates and parses a string into a `UUID`. |
+
+### For `date` or `time` fields
 
 | **Rule** | **Description** |
 | :-------- | :------- |
@@ -575,11 +582,13 @@ All of these rules were created to be used with `#[special(from_type(String))]` 
 | `parse_naive_time`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDateTime` matching the specified format. |
 | `parse_naive_date`(format = \<string>, message = <?string>, code = <?string>) | Validates and parses a string into a `NaiveDate` matching the specified format. |
 
-### For `uuid` fields
+### For `ip` fields
 
 | **Rule** | **Description** |
 | :-------- | :------- |
-| `parse_uuid` | Validates and parses a string into a UUID. |
+| `parse_ip` | Validates and parses a string into a `IpAddr`. |
+| `parse_ipv4` | Validates and parses a string into a `Ipv4Addr`. |
+| `parse_ipv6` | Validates and parses a string into a `Ipv6Addr`. |
 
 ### Custom rules
 
