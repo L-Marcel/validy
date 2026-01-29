@@ -42,7 +42,7 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [For `test` assertions](#for-test-assertions)
 - [💝 Complete Example](#-complete-example)
 - [📁 More Examples](#-more-examples)
-- [🎯 Work In Progress](#-work-in-progress)
+<!--- [🎯 Work In Progress](#-work-in-progress)-->
 - [🎁 For Developers](#-for-developers)
 
 ## 📝 Installation
@@ -871,12 +871,6 @@ pub trait UserService: Send + Sync + Debug {
 ## 📁 More Examples
 
 If the examples aren't enough, I've included a more complete and documented example [here](/docs/complete_example.md). You also can use the [tests](/tests) as a reference.
-
-## 🎯 Work In Progress
-
-- [ ] Failure mode test coverage.
-  - The current default is `FailOncePerField` (covered by the tests).
-- [ ] Parse ips.
 
 ## 🎁 For Developers
 

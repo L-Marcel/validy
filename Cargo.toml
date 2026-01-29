@@ -6,7 +6,7 @@ members = [
 
 [package]
 name = "validy"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2024"
 description = "A powerful and flexible Rust library based on procedural macros for validation, modification, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with Axum. Inspired by Validator, Validify and Garde."
 license = "MIT"
