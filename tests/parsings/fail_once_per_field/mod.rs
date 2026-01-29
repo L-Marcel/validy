@@ -2,3 +2,7 @@ pub mod async_custom;
 pub mod async_custom_with_context;
 pub mod custom;
 pub mod custom_with_context;
+pub mod naive_date;
+pub mod naive_time;
+pub mod time;
+pub mod uuid;
