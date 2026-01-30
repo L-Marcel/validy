@@ -2,7 +2,7 @@
 
 *More than just validation.*
 
-[![Crates.io](https://img.shields.io/crates/v/validy.svg)](https://crates.io/crates/validy)
+[![Crates.io](https://img.shields.io/crates/v/validy.svg)](https://crates.io/crates/validy?v=1)
 [![Status](https://github.com/L-Marcel/validy/actions/workflows/ci.yml/badge.svg)](https://github.com/L-Marcel/validy/actions/workflows/ci.yml)
 
 A powerful and flexible Rust library based on procedural macros for `validation`, `modification`, and DTO (Data Transfer Object) handling. Designed to integrate seamlessly with `Axum`. Inspired by `Validator`, `Validify`, and `Garde`.
