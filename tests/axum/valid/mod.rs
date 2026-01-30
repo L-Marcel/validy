@@ -8,8 +8,6 @@ pub mod default;
 pub mod mocks;
 pub mod modificate;
 pub mod modificate_with_context;
-pub mod multipart;
 pub mod payload;
 pub mod payload_with_context;
-pub mod valid;
 pub mod with_context;

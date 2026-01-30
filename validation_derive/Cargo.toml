@@ -1,6 +1,6 @@
 [package]
 name = "validation_derive"
-version = "1.2.0"
+version = "1.2.3"
 edition = "2024"
 description = "Secundary Crate for macros."
 license = "MIT"

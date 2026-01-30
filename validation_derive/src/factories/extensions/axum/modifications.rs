@@ -9,7 +9,6 @@ pub fn get_async_modification_axum_extension(struct_name: &Ident) -> TokenStream
  			use axum::{
 				Json,
 				extract::{FromRef, FromRequest, Request},
-				http::StatusCode,
 				response::{IntoResponse, Response},
  	    };
 
@@ -42,7 +41,6 @@ pub fn get_async_modification_with_context_axum_extension(struct_name: &Ident) -
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -79,7 +77,6 @@ pub fn get_async_modification_axum_multipart_extension(struct_name: &Ident) -> T
   		use axum::{
    			Json,
    			extract::{FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -119,7 +116,6 @@ pub fn get_async_modification_with_context_axum_multipart_extension(struct_name:
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 

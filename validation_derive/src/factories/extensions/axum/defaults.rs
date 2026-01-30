@@ -9,7 +9,6 @@ pub fn get_async_default_axum_extension(struct_name: &Ident) -> TokenStream {
  			use axum::{
 				Json,
 				extract::{FromRef, FromRequest, Request},
-				http::StatusCode,
 				response::{IntoResponse, Response},
  	    };
 
@@ -42,7 +41,6 @@ pub fn get_async_default_with_context_axum_extension(struct_name: &Ident) -> Tok
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -79,7 +77,6 @@ pub fn get_async_default_axum_multipart_extension(struct_name: &Ident) -> TokenS
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -119,7 +116,6 @@ pub fn get_async_default_with_context_axum_multipart_extension(struct_name: &Ide
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 

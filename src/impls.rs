@@ -1,6 +1,10 @@
+#[cfg(feature = "axum")]
+use crate::core::NoContext;
 use ::validy::core::{
 	IntoValidationError, NestedValidationError, SimpleValidationError, ValidationError, ValidationErrors,
 };
+#[cfg(feature = "axum")]
+use axum::extract::FromRef;
 use std::{borrow::Cow, collections::HashMap};
 
 impl NestedValidationError {
@@ -98,5 +102,12 @@ impl IntoValidationError for ValidationErrors {
 			code,
 			errors: self,
 		})
+	}
+}
+
+#[cfg(feature = "axum")]
+impl<S> FromRef<S> for NoContext {
+	fn from_ref(_: &S) -> Self {
+		NoContext
 	}
 }

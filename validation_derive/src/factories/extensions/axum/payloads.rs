@@ -10,7 +10,6 @@ pub fn get_async_payload_axum_extension(struct_name: &Ident) -> TokenStream {
  			use axum::{
 				Json,
 				extract::{FromRef, FromRequest, Request},
-				http::StatusCode,
 				response::{IntoResponse, Response},
  	    };
 
@@ -23,7 +22,7 @@ pub fn get_async_payload_axum_extension(struct_name: &Ident) -> TokenStream {
 				type Rejection = Response;
 
 				async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
- 					let Json(mut wrapper) = Json::<<#struct_name as SpecificAsyncValidateAndParse>::Wrapper>::from_request(req, state)
+ 					let Json(wrapper) = Json::<<#struct_name as SpecificAsyncValidateAndParse>::Wrapper>::from_request(req, state)
 						.await
 						.map_err(|e| e.into_response())?;
 
@@ -47,7 +46,6 @@ pub fn get_async_payload_with_context_axum_extension(struct_name: &Ident) -> Tok
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -61,7 +59,7 @@ pub fn get_async_payload_with_context_axum_extension(struct_name: &Ident) -> Tok
        	type Rejection = Response;
 
  			  async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-  				let Json(mut wrapper): Json<<#struct_name as SpecificAsyncValidateAndParseWithContext>::Wrapper> =
+  				let Json(wrapper): Json<<#struct_name as SpecificAsyncValidateAndParseWithContext>::Wrapper> =
  					Json::from_request(req, state).await.map_err(|e| e.into_response())?;
 
   				let context: <#struct_name as SpecificAsyncValidateAndParseWithContext>::Context = FromRef::from_ref(state);
@@ -86,7 +84,6 @@ pub fn get_async_payload_axum_multipart_extension(struct_name: &Ident) -> TokenS
   		use axum::{
    			Json,
    			extract::{FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -103,7 +100,7 @@ pub fn get_async_payload_axum_multipart_extension(struct_name: &Ident) -> TokenS
        			.await
        			.map_err(|e| e.into_response())?;
 
-					let mut wrapper = <#struct_name as SpecificAsyncValidateAndParse>::Wrapper::try_from_multipart_with_state(
+					let wrapper = <#struct_name as SpecificAsyncValidateAndParse>::Wrapper::try_from_multipart_with_state(
        			&mut multipart,
        			state,
       		).await.map_err(|e| e.into_response())?;
@@ -128,7 +125,6 @@ pub fn get_async_payload_with_context_axum_multipart_extension(struct_name: &Ide
   		use axum::{
    			Json,
    			extract::{FromRef, FromRequest, Request, Multipart, State},
-   			http::StatusCode,
    			response::{IntoResponse, Response},
       };
 
@@ -146,7 +142,7 @@ pub fn get_async_payload_with_context_axum_multipart_extension(struct_name: &Ide
        			.await
        			.map_err(|e| e.into_response())?;
 
-      		let mut wrapper = <#struct_name as SpecificAsyncValidateAndParseWithContext>::Wrapper::try_from_multipart_with_state(
+      		let wrapper = <#struct_name as SpecificAsyncValidateAndParseWithContext>::Wrapper::try_from_multipart_with_state(
        			&mut multipart,
        			state,
       		).await.map_err(|e| e.into_response())?;

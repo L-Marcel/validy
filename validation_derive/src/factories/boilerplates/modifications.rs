@@ -125,6 +125,13 @@ pub fn get_modification_with_context_boilerplate(
 			    #method
 			  }
 		  }
+
+			impl SpecificValidateAndModificateWithContext for #struct_name {
+				type Context = NoContext;
+				fn specific_validate_and_modificate_with_context(&mut self, context: &NoContext) -> Result<(), ValidationErrors> {
+          #method
+        }
+      }
     }
 	};
 
@@ -186,6 +193,14 @@ pub fn get_async_modification_with_context_boilerplate(
 		  impl<C> AsyncValidateAndModificateWithContext<C> for #struct_name {
 			  async fn async_validate_and_modificate_with_context(&mut self, _: &C) -> Result<(), ValidationErrors> {
 			    #method
+			  }
+		  }
+
+  		#[async_trait]
+		  impl SpecificAsyncValidateAndModificateWithContext for #struct_name {
+				type Context = NoContext;
+		    async fn specific_async_validate_and_modificate_with_context(&mut self, context: &NoContext) -> Result<(), ValidationErrors> {
+				  #method
 			  }
 		  }
     }

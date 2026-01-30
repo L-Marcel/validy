@@ -102,8 +102,8 @@ pub fn get_attributes(input: &DeriveInput) -> ValidationAttributes {
 		cfg!(feature = "axum_multipart"),
 	) {
 		(true, _, false, _) => emit_error!(input.span(), "Needs to enable axum flag"),
-		(true, true, true, false) => emit_error!(input.span(), "Needs to enable axum_multipart flag"),
-		(false, true, true, true) => emit_error!(input.span(), "Needs to enable axum configuration attribute"),
+		(_, true, false, _) => emit_error!(input.span(), "Needs to enable axum flag"),
+		(_, true, true, false) => emit_error!(input.span(), "Needs to enable axum_multipart flag"),
 		_ => {}
 	}
 

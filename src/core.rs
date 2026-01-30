@@ -150,6 +150,9 @@ pub trait SpecificAsyncValidateAndParseWithContext: Sized + Send + Sync {
 	) -> Result<Self, ValidationErrors>;
 }
 
+#[derive(Debug)]
+pub struct NoContext;
+
 pub trait IntoValidationError {
 	fn into_error(self, field: Cow<'static, str>, code: Cow<'static, str>) -> ValidationError;
 }

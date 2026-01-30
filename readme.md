@@ -14,8 +14,10 @@ A powerful and flexible Rust library based on procedural macros for `validation`
   - [Failure modes](#failure-modes)
   - [Caching regex](#caching-regex)
 - [🔌 Axum Integration](#-axum-integration)
+  - [Using `Valid<T>`](#using-valid-t)
   - [Customizing the failure `status code`](#customizing-the-failure-status-code)
   - [Multipart support](#multipart-support)
+  - [Using `ValidMultipart<T>`](#using-validmultipart-t)
 - [🧩 Manual Usage](#-manual-usage)
   - [Available traits](#available-traits)
 - [🚩 Feature Flags](#-feature-flags)
@@ -309,6 +311,74 @@ pub trait UserService: Send + Sync + Debug {
 
 Yes, it's beautiful.
 
+### Using `Valid<T>`
+
+When `axum` configuration attribute enabled a extractor is generated only for the current struct. For many structs this can become costly. So, if you prefer a generic implementation of extractors, I recommend using `Valid<T>`. But this requires the `axum_generic_extractor` feature to be enabled.
+
+```rust
+use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
+use validy::{axum::valid::Valid, core::{Validate, ValidateAndParse, ValidationError}};
+use std::{sync::Arc, fmt::Debug};
+
+#[derive(Debug, Validate)]
+#[validate(asynchronous, context = Arc<dyn UserService>, payload)]
+pub struct CreateUserDTO {
+	#[modificate(trim)]
+	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	pub name: String,
+
+	#[modificate(trim)]
+	#[validate(length(0..=254, "email must not be more than 254 characters"))]
+	#[validate(email("invalid email format"))]
+	#[validate(async_custom_with_context(validate_unique_email))]
+	pub email: String,
+
+	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
+	pub password: String,
+}
+
+pub async fn create_user(
+	State(service): State<Arc<dyn UserService>>,
+	Valid(CreateUserDTO { name, email, password }): Valid<CreateUserDTO>,
+) -> Result<Response, Response> {
+	service.create(name, email, password).await?;
+	Ok(StatusCode::CREATED.into_response())
+}
+
+async fn validate_unique_email(
+	email: &str,
+	_field_name: &str,
+	service: &Arc<dyn UserService>,
+) -> Result<(), ValidationError> {
+	let result = service.email_exists(email).await;
+
+	match result {
+		Ok(false) => Ok(()),
+		Ok(true) => Err(ValidationError::builder()
+			.with_field("email")
+			.as_simple("unique")
+			.with_message("email already in use")
+			.build()
+			.into()),
+		Err(_) => {
+			Err(ValidationError::builder()
+				.with_field("email")
+				.as_simple("internal error")
+				.with_message("It wasn't possible to verify if the email is unique")
+				.build()
+				.into())
+		}
+	}
+}
+
+#[async_trait::async_trait]
+pub trait UserService: Send + Sync + Debug {
+	async fn create(&self, name: String, email: String, password: String) -> Result<(), Response>;
+	async fn email_exists(&self, email: &str) -> Result<bool, Response>;
+	//...
+}
+```
+
 ### Customizing the failure `status code`
 
 You can change the HTTP status code returned on validation failure:
@@ -403,6 +473,83 @@ pub trait UserService: Send + Sync + Debug {
 ```
 
 Yes, it's beautiful too.
+
+### Using `ValidMultipart<T>`
+
+When `axum` configuration attribute enabled a extractor is generated only for the current struct. For many structs this can become costly. So, if you prefer a generic implementation of multipart extractors, I recommend using `ValidMultipart<T>`. But this requires the `axum_generic_extractor` feature to be enabled too.
+
+> Warning: you will still need the `multipart` configuration attribute! However, individual extractors will not be generated because the `axum` configuration attribute is still required for their generation.
+
+```rust
+use axum::{Json, extract::State, http::StatusCode, response::{Response, IntoResponse}};
+use validy::{core::{Validate, ValidateAndParse, ValidationError}, axum::valid::ValidMultipart};
+use std::{sync::Arc, fmt::Debug};
+use tempfile::NamedTempFile;
+use axum_typed_multipart::{FieldData};
+
+#[derive(Debug, Validate)]
+#[validate(asynchronous, context = Arc<dyn UserService>, payload, multipart)]
+pub struct CreateUserDTO {
+  #[wrapper_attribute(form_data(limit = "10MB"))]
+  #[validate(field_content_type(r"^(image/.*)$"))] //requires `axum_multipart_field_data` feature yet
+  pub avatar: FieldData<NamedTempFile>,
+  
+  #[wrapper_attribute(form_data(field_name = "user_name"))]
+	#[modificate(trim)]
+	#[validate(length(3..=120, "name must be between 3 and 120 characters"))]
+	pub name: String,
+
+	#[modificate(trim)]
+	#[validate(length(0..=254, "email must not be more than 254 characters"))]
+	#[validate(email("invalid email format"))]
+	#[validate(async_custom_with_context(validate_unique_email))]
+	pub email: String,
+
+	#[validate(length(3..=12, code = "size", message = "password must be between 3 and 12 characters"))]
+	pub password: String,
+}
+
+pub async fn create_user(
+	State(service): State<Arc<dyn UserService>>,
+	ValidMultipart(CreateUserDTO { avatar, name, email, password }): ValidMultipart<CreateUserDTO>,
+) -> Result<Response, Response> {
+	service.create(avatar, name, email, password).await?;
+	Ok(StatusCode::CREATED.into_response())
+}
+
+async fn validate_unique_email(
+	email: &str,
+	_field_name: &str,
+	service: &Arc<dyn UserService>,
+) -> Result<(), ValidationError> {
+	let result = service.email_exists(email).await;
+
+	match result {
+		Ok(false) => Ok(()),
+		Ok(true) => Err(ValidationError::builder()
+			.with_field("email")
+			.as_simple("unique")
+			.with_message("email already in use")
+			.build()
+			.into()),
+		Err(_) => {
+			Err(ValidationError::builder()
+				.with_field("email")
+				.as_simple("internal error")
+				.with_message("It wasn't possible to verify if the email is unique")
+				.build()
+				.into())
+		}
+	}
+}
+
+#[async_trait::async_trait]
+pub trait UserService: Send + Sync + Debug {
+	async fn create(&self, avatar: FieldData<NamedTempFile>, name: String, email: String, password: String) -> Result<(), Response>;
+	async fn email_exists(&self, email: &str) -> Result<bool, Response>;
+	//...
+}
+```
 
 ## 🧩 Manual Usage
 
