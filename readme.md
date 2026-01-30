@@ -42,8 +42,8 @@ A powerful and flexible Rust library based on procedural macros for `validation`
 - [📐 Useful Macros](#-useful-macros)
   - [For `error` handling](#for-error-handling)
   - [For `test` assertions](#for-test-assertions)
-- [💝 Complete Example](#-complete-example)
 - [📁 More Examples](#-more-examples)
+- [💝 Complete Example](#-complete-example)
 - [🎁 For Developers](#-for-developers)
 <!--- [🎯 Work In Progress](#-work-in-progress)-->
 
@@ -882,6 +882,10 @@ let result = Test::validate_and_parse(test.clone());
 assert_parsed!(result, test, Test { a: 1 });
 ```
 
+## 📁 More Examples
+
+If the examples aren't enough, you can see the [💝 Complete Example](#-complete-example) or use the [tests](/tests) as a reference.
+
 ## 💝 Complete Example
 
 ```rust
@@ -1014,10 +1018,6 @@ pub trait UserService: Send + Sync + Debug {
 	//...
 }
 ```
-
-## 📁 More Examples
-
-If the examples aren't enough, you can use the [tests](/tests) as a reference.
 
 ## 🎁 For Developers
 
